@@ -1,57 +1,108 @@
-# Hồ sơ chuyên đề · Tập hợp lực lượng, thành lập tổ chức phản động trên không gian mạng
+# Hồ sơ chuyên đề HS-01/KGM
 
-Bản trình chiếu web (Next.js 15 + React Three Fiber), 15 trang, phong cách **phòng chuyên án ban đêm**.
-Toàn bộ 15 trang nằm trong một không gian 3D duy nhất: mỗi trang là một "trạm" trên mặt bàn, camera lướt giữa các trạm, sợi dây đỏ tự vẽ dần nối trạm cũ với trạm mới. Phiếu trích yếu bên trái hiện chữ, mỗi lần bấm sáng đúng dòng ứng với cảnh 3D đang diễn.
+Bản trình chiếu web cho chuyên đề *Tập hợp lực lượng, thành lập tổ chức phản động trên không gian mạng* của Tiểu đội 2. Bản trình chiếu gồm 15 trang. Mỗi trang ứng với một trạm 3D trên cùng một mặt bàn, mỗi lần bấm chuột chuyển sang một nhịp.
 
-## Chạy thử trên máy
+Khi chuyển trang, camera di chuyển sang trạm kế tiếp và sợi dây đỏ kéo dài nối hai trạm. Phiếu chữ bên trái làm sáng đúng ý đang trình bày.
+
+**Công nghệ:** Next.js 15 (xuất trang tĩnh), React 19, React Three Fiber 9, three.js 0.169.
+
+## Chạy trên máy
+
+Yêu cầu Node.js 18 trở lên.
+
 ```bash
 npm install
-npm run dev        # mở http://localhost:3000
+npm run dev          # http://localhost:3000
 ```
 
-## Đưa lên Vercel
-1. Tạo repo mới trên GitHub, đẩy toàn bộ thư mục này lên (`.gitignore` đã loại `node_modules`, `.next`, `out`).
-2. Vào vercel.com → Add New → Project → chọn repo → Deploy. Dự án xuất trang tĩnh, không cần cấu hình thêm.
+Kiểm tra bản xuất tĩnh trước khi triển khai:
+
+```bash
+npx next build       # kết quả nằm trong thư mục out/
+```
+
+> Tắt dev server trước khi chạy `next build`. Hai tiến trình dùng chung thư mục `.next`, nên chạy song song sẽ làm dev server báo lỗi `ENOENT`. Nếu gặp lỗi này, xoá thư mục `.next` rồi chạy lại `npm run dev`.
+
+## Triển khai lên Vercel
+
+1. Đẩy mã nguồn lên một repo GitHub. Tệp `.gitignore` đã loại `node_modules`, `.next` và `out`.
+2. Trên Vercel, chọn **Add New → Project**, chọn repo, bấm **Deploy**. Vercel tự nhận cấu hình Next.js.
+3. Mỗi lần `git push` lên nhánh `main`, Vercel tự build và cập nhật đường dẫn.
 
 ## Điều khiển khi trình chiếu
-- Nhấn chuột, phím → hoặc Space: nhịp tiếp / trang tiếp. Phím ←: lùi. Home / End: trang đầu / cuối.
-- Toàn màn hình: nút ở góc trên bên phải hoặc phím F (bấm lần nữa để thoát). Phím O: tổng quan 15 trang. Con trỏ chuột tự ẩn sau 2,5 giây.
-- Bấm vào một dòng trong phiếu, hoặc chấm trên thanh bước, để nhảy thẳng tới nhịp đó.
-- Mở thẳng một nhịp: `/ho-so/10/?s=3` (trang 10, nhịp thứ 4).
 
-## Kịch bản từng trang (mỗi "→" là một lần bấm)
-| Trang | Cảnh 3D |
+| Thao tác | Phím hoặc chuột |
 |---|---|
-| 1 Bìa | Bìa hồ sơ trên bàn dưới đèn, dấu mộc "10đ" đóng xuống bìa → bìa mở, lộ trang mục lục |
-| 2 Thành viên | Ảnh nhóm hiện hình trên bảng → bấm một lần, bút chì màu lần lượt khoanh từng khuôn mặt (nhóm trưởng trước, rồi thuyết trình, slide, tìm tài liệu), kéo nét dẫn ra thẻ tên; nhịp khoanh chỉnh ở `TEAM_STAGGER` |
-| 3 Mục lục | Camera lùi ra thấy toàn bộ 15 trạm và sợi dây đỏ |
-| 4 Khái niệm | Quân cờ rời rạc, đối tượng phát sóng → bị hút về quanh đối tượng (tập hợp lực lượng) → xếp thành tháp phân cấp, bản cương lĩnh hạ xuống (thành lập tổ chức) |
-| 5 Đặc điểm | Địa cầu, tín hiệu nhảy qua 3 máy chủ nước ngoài → biển "Hội Dân sự" mở ra để lộ tổ chức phía sau → màu đỏ lan qua các nhóm nhỏ rồi sáp nhập thành khối lớn |
-| 6 Ba dạng | Tầng mạng lơ lửng trên sa bàn thực tế → dạng 01, 02 (cột sáng nối một phần), 03 (trùng khít) |
-| 7, 9 Vụ việc | Hồ sơ mở, trích yếu, ảnh thật của vụ việc → từng tình tiết trượt ra (vụ 02: ảnh vật liệu nổ) → dấu đỏ đóng xuống |
-| 8 Hình thức | Ba sa bàn: dựng cờ mới → mảnh vỡ ghép lại → quản trị viên bị thay, nhóm đổi màu |
-| 10 Đơn tuyến | Quảng trường → đèn rọi chấm chọn → phòng kín có khóa → vách ngăn chia tổ → người điều hành bên kia biên giới giật dây rối |
-| 11–13 Ba giai đoạn | Ba bậc thềm cao dần, mỗi thủ đoạn một vật tượng trưng sáng lên → hồ sơ vụ việc mở kèm ảnh thật; trang 13 đi dọc 5 cột mốc MSFJ, ảnh phiên tòa hiện ở mốc 1/2024 |
-| 14 Nhận xét | Toàn cảnh, đèn vàng soi lại các trạm minh chứng cho từng nhận xét → mô hình hai tầng có vòng quét |
-| 15 Tổng hợp | Bảng ghi nhớ 6 nội dung cốt lõi trên nền toàn bàn → hồ sơ HS-01 khép lại giữa ảnh nhóm và ảnh các vụ việc, dây đỏ buộc, dấu "Hoàn thành" đóng xuống, hiện lời cảm ơn |
+| Nhịp tiếp hoặc trang tiếp | Click, `→`, `Space`, `Enter` |
+| Lùi một nhịp | `←`, `Backspace` |
+| Trang đầu, trang cuối | `Home`, `End` |
+| Bật hoặc tắt toàn màn hình | `F`, hoặc nút ở góc trên bên phải |
+| Màn hình tổng quan 15 trang | `O`, đóng bằng `O` hoặc `Esc` |
+| Nhảy tới một nhịp | Bấm vào dòng trong phiếu chữ hoặc chấm trên thanh bước |
 
-## Sửa nội dung và ảnh
-- Toàn bộ chữ và dòng thông tin trang bìa (đơn vị): `content/slides.ts` (`COVER`, các `beats`).
-- Họ tên và vai trò 10 thành viên: `MEMBERS` trong `content/slides.ts`. Mỗi dòng ứng với một khuôn mặt trên ảnh `team.jpg` (có ghi chú áo để nhận ra), chỉ cần sửa `name` và `role` (0 nhóm trưởng, 1 thuyết trình, 2 thiết kế slide, 3 tìm kiếm tài liệu). Màu và tên vai trò: `ROLES`.
-- Ảnh đặt trong `public/images` (xem `public/images/README.txt`). **Chỉ khi có file ảnh thật thì khung ảnh mới hiện**, không có ô trống.
-- Góc máy từng nhịp: `components/world/layout.ts`. Từng trạm 3D: `components/world/stations/`.
+Đường dẫn `/ho-so/10/?s=3` mở thẳng trang 10 ở nhịp thứ tư (nhịp đánh số từ 0). Con trỏ chuột tự ẩn sau 2,5 giây không di chuyển.
+
+## Cấu trúc trình chiếu
+
+| Trang | Nội dung | Số nhịp |
+|---|---|---|
+| 1–3 | Bìa, thành viên, mục lục | 2, 2, 1 |
+| 4 | I. Khái niệm | 3 |
+| 5 | II. Đặc điểm | 3 |
+| 6–7 | III. Các dạng, vụ việc 01 | 3, 5 |
+| 8–9 | IV. Hình thức, vụ việc 02 | 3, 5 |
+| 10–13 | V. Thủ đoạn (sơ đồ đơn tuyến, ba giai đoạn), kèm vụ việc 03–05 | 5, 5, 6, 8 |
+| 14 | VI. Nhận xét chung | 4 |
+| 15 | Bảng ghi nhớ và lời cảm ơn | 2 |
+
+## Sửa nội dung
+
+Toàn bộ chữ nằm trong `content/slides.ts`. Phần giao diện không cần sửa khi thay nội dung.
+
+| Cần sửa | Vị trí |
+|---|---|
+| Thông tin trang bìa | `COVER` |
+| Họ tên và vai trò thành viên | `MEMBERS`, sửa `name` và `role` (0 nhóm trưởng, 1 thuyết trình, 2 thiết kế slide, 3 tìm kiếm tài liệu) |
+| Tên và màu vai trò | `ROLES` |
+| Nhịp khoanh mặt ở trang 2 | `TEAM_STAGGER` (giây giữa hai người) |
+| Các ý trên phiếu chữ | trường `beats` của từng trang |
+| Bảng ghi nhớ trang 15 | trường `recap` |
+
+Chữ đặt trong `**…**` được tô highlight trên phiếu. Quy ước hiện tại chỉ dùng highlight cho hai cụm cốt lõi trong định nghĩa ở trang 4.
+
+Mỗi phần tử của `MEMBERS` gắn với một khuôn mặt trên ảnh `public/images/team.jpg` qua trường `face`. Nếu thay ảnh nhóm, cần đo lại toạ độ `face` theo ảnh mới.
+
+## Ảnh
+
+Ảnh đặt trong `public/images`. Danh sách tệp và trang sử dụng ghi trong `public/images/README.txt`. Khung ảnh trong cảnh 3D chỉ hiện khi tệp tồn tại, nên thiếu ảnh không làm hỏng trang.
+
+Ảnh vụ việc lấy từ các bài báo sau, nguồn ghi trong chú thích dưới mỗi ảnh:
+
+| Tệp | Nguồn |
+|---|---|
+| `vv01.jpg` | [Báo Thanh Tra, ảnh TTXVN](https://thanhtra.com.vn/an-ninh-trat-tu-D718A18CA/xet-xu-6-bi-cao-ve-toi-hoat-dong-nham-lat-do-chinh-quyen-nhan-dan-CC0004FD.html) |
+| `vv02.jpg`, `vv02b.jpg` | [Bộ Công an](https://en.bocongan.gov.vn/terrorist-article/images-of-terrorist-acts-by-the-trieu-dai-viet-terrorist-organization-1754317818) |
+| `vv03.jpg` | [Báo Thanh Tra, ảnh TTXVN](https://thanhtra.com.vn/an-ninh-trat-tu-D718A18CA/tuyen-truyen-chong-pha-nha-nuoc-pham-chi-dung-bi-tuyen-phat-15-nam-tu-B134A536.html) |
+| `vv04.jpg` | [Báo Tiền Phong](https://tienphong.vn/toa-an-ra-thong-cao-ve-phien-xet-xu-dao-minh-quan-pham-lisa-va-dong-pham-post1843826.tpo) |
+| `vv05.jpg` | [Báo SGGP](https://www.sggp.org.vn/vu-khung-bo-tai-tinh-dak-lak-10-bi-cao-nhan-an-chung-than-post723594.html) |
+| `vv05b.jpg` | [Báo SGGP](https://www.sggp.org.vn/3-ngay-sau-vu-tan-cong-tru-so-ubnd-2-xa-o-dak-lak-binh-yen-da-tro-lai-post693673.html) |
+
+Ảnh báo chí dùng cho mục đích học tập nội bộ. Nếu công khai đường dẫn Vercel, cần cân nhắc bản quyền ảnh hoặc bật **Deployment Protection** trong phần cài đặt dự án trên Vercel.
 
 ## Cấu trúc mã
-- `components/Deck.tsx`: điều hướng, khung giao diện, một canvas 3D dùng chung cho cả 15 trang.
-- `components/Overlay.tsx`: phiếu trích yếu HTML.
-- `components/world/World.tsx`: căn phòng, camera, đèn, dây đỏ, bảng tên trạm.
-- `components/world/props.tsx`: đạo cụ dùng chung (quân cờ, bìa hồ sơ, giấy, biển, thanh sáng, dây).
-- Máy không có WebGL: vẫn trình chiếu được phần chữ trên nền tối.
 
-## Nguồn ảnh vụ việc (đã tải về `public/images`, chú thích trên ảnh ghi rõ nguồn)
-- vv01: https://thanhtra.com.vn/an-ninh-trat-tu-D718A18CA/xet-xu-6-bi-cao-ve-toi-hoat-dong-nham-lat-do-chinh-quyen-nhan-dan-CC0004FD.html
-- vv02: https://en.bocongan.gov.vn/terrorist-article/images-of-terrorist-acts-by-the-trieu-dai-viet-terrorist-organization-1754317818
-- vv03: https://thanhtra.com.vn/an-ninh-trat-tu-D718A18CA/tuyen-truyen-chong-pha-nha-nuoc-pham-chi-dung-bi-tuyen-phat-15-nam-tu-B134A536.html
-- vv04: https://tienphong.vn/toa-an-ra-thong-cao-ve-phien-xet-xu-dao-minh-quan-pham-lisa-va-dong-pham-post1843826.tpo
-- vv05: https://www.sggp.org.vn/vu-khung-bo-tai-tinh-dak-lak-10-bi-cao-nhan-an-chung-than-post723594.html
-- vv05b: https://www.sggp.org.vn/3-ngay-sau-vu-tan-cong-tru-so-ubnd-2-xa-o-dak-lak-binh-yen-da-tro-lai-post693673.html
+```
+app/                      Route /ho-so/[n], layout giữ Deck không bị dựng lại khi đổi trang
+content/slides.ts         Toàn bộ nội dung và số nhịp của từng trang
+components/
+  Deck.tsx                Điều hướng, phím tắt, khung giao diện, màn hình tổng quan
+  Overlay.tsx             Phiếu chữ HTML của từng loại trang
+  world/
+    World.tsx             Canvas 3D dùng chung: ánh sáng, camera, dây đỏ, bảng tên trạm
+    layout.ts             Vị trí 15 trạm và góc máy của từng nhịp
+    props.tsx             Đạo cụ dùng chung: quân cờ, bìa hồ sơ, biển, ảnh, thanh nối
+    stations/             Cảnh 3D của từng nhóm trang
+public/images/            Ảnh nhóm và ảnh vụ việc
+```
+
+Canvas 3D chỉ dựng trạm đang xem, trạm vừa rời và trạm kế tiếp (trạm kế tiếp được ẩn) để giới hạn số đối tượng phải vẽ. Ở màn hình nhìn toàn bàn, bản đồ bóng đổ ngừng cập nhật. Trên máy không hỗ trợ WebGL, trang vẫn hiển thị phần chữ trên nền tối.
