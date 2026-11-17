@@ -1,17 +1,10 @@
-Đặt ảnh vào thư mục này đúng tên file (jpg). Thiếu ảnh nào thì cảnh 3D tự bỏ khung ảnh đó, không hiện ô trống.
-Chú thích hiện dưới mỗi ảnh sửa trong content/slides.ts (trường imageHint, extra).
+Đặt ảnh vào thư mục này đúng tên file (jpg). Thiếu ảnh thì khung hologram hiện ô tối, không làm hỏng trang.
+Chú thích và nguồn sửa trong content/slides.ts (METHODS[].case.caption, source).
 
-Đã có sẵn (ảnh báo chí, chú thích đã ghi nguồn):
-  vv01.jpg   Bị cáo Nguyễn Văn Đài tại phiên tòa 5/4/2018 · TTXVN (qua báo Thanh Tra)      → trang 7
-  vv02.jpg   Hiện trường một vụ gây nổ · Bộ Công an                                          → trang 9
-  vv02b.jpg  Vật liệu nổ thu giữ · Bộ Công an                                                → trang 9, tình tiết 03
-  vv03.jpg   Phiên tòa xét xử ngày 5/1/2021 · TTXVN (qua báo Thanh Tra)                      → trang 11
-  vv04.jpg   Đào Minh Quân, Phạm Lisa · Báo Tiền Phong                                       → trang 12
-  vv05.jpg   Phiên tòa tại Đắk Lắk, 1/2024 · Báo SGGP                                        → trang 13, mốc 1/2024
-  vv05b.jpg  Trụ sở xã Ea Tiêu sau vụ tấn công 11/6/2023 · Báo SGGP                         → trang 13, mốc 11/6/2023
-
-Dùng lại làm ảnh minh họa phần lý thuyết:
-  vv03.jpg → trang 6 (dạng 02) · vv01.jpg → trang 6 (dạng 03) · vv04.jpg → trang 10 (người điều hành ở nước ngoài)
-
-  team.jpg   Ảnh nhóm                                                                        → trang 2
-             (đổi ảnh khác thì phải đo lại vị trí khuôn mặt trong MEMBERS, trường face)
+  team.jpg   Ảnh nhóm                                                     → trang 2 (đổi ảnh thì đo lại MEMBERS[].face)
+  vv01.jpg   Nguyễn Văn Đài tại phiên tòa 05/4/2018 · TTXVN              → trang 8, Phương thức 1 · "Hội anh em dân chủ"
+  vv05.jpg   Phiên tòa tại Đắk Lắk, 01/2024 · Báo SGGP                    → trang 9, Phương thức 2 · MSFJ
+  vv03.jpg   Phiên tòa xét xử ngày 05/01/2021 · TTXVN                     → trang 10, Phương thức 3 · "Hội nhà báo độc lập VN"
+  vv04.jpg   Đào Minh Quân, Phạm Lisa · Báo Tiền Phong                    → trang 11, Phương thức 4 · "Chính phủ quốc gia VN lâm thời"
+  vv02.jpg   Hiện trường một vụ gây nổ · Bộ Công an                       → trang 12, Phương thức 5 · "Triều Đại Việt"
+  vv02b.jpg, vv05b.jpg   Ảnh phụ, hiện chưa dùng

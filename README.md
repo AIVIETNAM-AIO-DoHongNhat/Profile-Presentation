@@ -1,8 +1,8 @@
-# Hồ sơ chuyên đề HS-01/KGM
+# Chuyên đề KGM · Tiểu đội 2
 
-Bản trình chiếu web cho chuyên đề *Tập hợp lực lượng, thành lập tổ chức phản động trên không gian mạng* của Tiểu đội 2. Bản trình chiếu gồm 15 trang. Mỗi trang ứng với một trạm 3D trên cùng một mặt bàn, mỗi lần bấm chuột chuyển sang một nhịp.
+Bản trình chiếu web cho chuyên đề *Tập hợp lực lượng, thành lập tổ chức phản động trên không gian mạng*. Nội dung khớp với `docs/noi_dung.docx`, gồm 14 trang.
 
-Khi chuyển trang, camera di chuyển sang trạm kế tiếp và sợi dây đỏ kéo dài nối hai trạm. Phiếu chữ bên trái làm sáng đúng ý đang trình bày.
+Ý tưởng trình bày: người xem đang lật **bên trong một cuốn hồ sơ**. Mỗi trang là một tờ giấy kẻ ô trong bìa hồ sơ. Hình minh họa là các tấm bìa cắt rời (người, điện thoại, trang nhóm mạng xã hội, lớp học trực tuyến, ứng dụng chat, biên giới, tiền, trụ sở…) bật dựng lên khỏi trang như sách pop-up theo từng nhịp bấm, nối với nhau bằng chỉ đỏ và mũi tên ghi chú. Ảnh vụ việc là ảnh in kẹp vào hồ sơ, kèm dấu mộc mức án.
 
 **Công nghệ:** Next.js 15 (xuất trang tĩnh), React 19, React Three Fiber 9, three.js 0.169.
 
@@ -37,7 +37,7 @@ npx next build       # kết quả nằm trong thư mục out/
 | Lùi một nhịp | `←`, `Backspace` |
 | Trang đầu, trang cuối | `Home`, `End` |
 | Bật hoặc tắt toàn màn hình | `F`, hoặc nút ở góc trên bên phải |
-| Màn hình tổng quan 15 trang | `O`, đóng bằng `O` hoặc `Esc` |
+| Màn hình tổng quan 14 trang | `O`, đóng bằng `O` hoặc `Esc` |
 | Nhảy tới một nhịp | Bấm vào dòng trong phiếu chữ hoặc chấm trên thanh bước |
 
 Đường dẫn `/ho-so/10/?s=3` mở thẳng trang 10 ở nhịp thứ tư (nhịp đánh số từ 0). Con trỏ chuột tự ẩn sau 2,5 giây không di chuyển.
@@ -46,14 +46,14 @@ npx next build       # kết quả nằm trong thư mục out/
 
 | Trang | Nội dung | Số nhịp |
 |---|---|---|
-| 1–3 | Bìa, thành viên, mục lục | 2, 2, 1 |
-| 4 | I. Khái niệm | 3 |
+| 1–3 | Bìa, thành viên, mục lục | 1, 2, 1 |
+| 4 | I. Khái niệm | 4 |
 | 5 | II. Đặc điểm | 3 |
-| 6–7 | III. Các dạng, vụ việc 01 | 3, 5 |
-| 8–9 | IV. Hình thức, vụ việc 02 | 3, 5 |
-| 10–13 | V. Thủ đoạn (sơ đồ đơn tuyến, ba giai đoạn), kèm vụ việc 03–05 | 5, 5, 6, 8 |
-| 14 | VI. Nhận xét chung | 4 |
-| 15 | Bảng ghi nhớ và lời cảm ơn | 2 |
+| 6 | III. Các dạng hội nhóm | 3 |
+| 7 | IV. Hình thức thành lập | 3 |
+| 8–12 | V. Năm phương thức, thủ đoạn. Mỗi trang 4 thủ đoạn (a–d) và 1 nhịp vụ việc minh họa | 5 mỗi trang |
+| 13 | VI. Giải pháp: 5 nhóm giải pháp và giải pháp chung | 6 |
+| 14 | Lời cảm ơn | 1 |
 
 ## Sửa nội dung
 
@@ -61,14 +61,11 @@ Toàn bộ chữ nằm trong `content/slides.ts`. Phần giao diện không cầ
 
 | Cần sửa | Vị trí |
 |---|---|
-| Thông tin trang bìa | `COVER` |
+| Tên nhóm | `GROUP` |
 | Họ tên và vai trò thành viên | `MEMBERS`, sửa `name` và `role` (0 nhóm trưởng, 1 thuyết trình, 2 thiết kế slide, 3 tìm kiếm tài liệu) |
-| Tên và màu vai trò | `ROLES` |
-| Nhịp khoanh mặt ở trang 2 | `TEAM_STAGGER` (giây giữa hai người) |
-| Các ý trên phiếu chữ | trường `beats` của từng trang |
-| Bảng ghi nhớ trang 15 | trường `recap` |
-
-Chữ đặt trong `**…**` được tô highlight trên phiếu. Quy ước hiện tại chỉ dùng highlight cho hai cụm cốt lõi trong định nghĩa ở trang 4.
+| Định nghĩa ở trang 4 | `DEFINITION` (chữ trong `**…**` được tô sáng) |
+| Năm phương thức và vụ việc | `METHODS`: `beats` là 4 thủ đoạn, `case` là vụ việc (ảnh, các dòng tình tiết, con số nổi bật `verdict`, nguồn) |
+| Các ý của trang khái niệm, đặc điểm, dạng, hình thức, giải pháp | trường `beats` hoặc `groups` trong `SLIDES` |
 
 Mỗi phần tử của `MEMBERS` gắn với một khuôn mặt trên ảnh `public/images/team.jpg` qua trường `face`. Nếu thay ảnh nhóm, cần đo lại toạ độ `face` theo ảnh mới.
 
@@ -96,13 +93,18 @@ app/                      Route /ho-so/[n], layout giữ Deck không bị dựng
 content/slides.ts         Toàn bộ nội dung và số nhịp của từng trang
 components/
   Deck.tsx                Điều hướng, phím tắt, khung giao diện, màn hình tổng quan
-  Overlay.tsx             Phiếu chữ HTML của từng loại trang
+  Overlay.tsx             Bảng chữ HTML của từng loại trang
   world/
-    World.tsx             Canvas 3D dùng chung: ánh sáng, camera, dây đỏ, bảng tên trạm
-    layout.ts             Vị trí 15 trạm và góc máy của từng nhịp
-    props.tsx             Đạo cụ dùng chung: quân cờ, bìa hồ sơ, biển, ảnh, thanh nối
-    stations/             Cảnh 3D của từng nhóm trang
+    World.tsx             Canvas 3D dùng chung: bìa hồ sơ, các tờ giấy, đèn bàn đổ bóng, chỉ đỏ nối trang, camera
+    layout.ts             Vị trí 14 tờ và góc máy của từng nhịp
+    art.ts                Thư viện hình vẽ canvas: người, điện thoại, laptop, trang nhóm, chat, biểu tượng
+    pop.tsx               Tấm bìa pop-up (Card) và đường chỉ mực tự vẽ (InkPath)
+    chibis.ts             Trang phục chibi của từng thành viên (theo ảnh nhóm)
+    fx.tsx                Tiện ích chung: ảnh in, chú thích đánh máy, vòng tròn, làm mượt theo nhịp
+    stations/             Cảnh của từng trang: Intro (bìa, thành viên, cảm ơn), Theory (mục I–IV), Methods (mục V), Solutions (mục VI)
 public/images/            Ảnh nhóm và ảnh vụ việc
 ```
 
-Canvas 3D chỉ dựng trạm đang xem, trạm vừa rời và trạm kế tiếp (trạm kế tiếp được ẩn) để giới hạn số đối tượng phải vẽ. Ở màn hình nhìn toàn bàn, bản đồ bóng đổ ngừng cập nhật. Trên máy không hỗ trợ WebGL, trang vẫn hiển thị phần chữ trên nền tối.
+Canvas 3D chỉ dựng trang đang xem, trang vừa rời và trang kế tiếp (trang kế tiếp được ẩn). Muốn đổi hình minh họa của một nhịp, sửa các thẻ `<Card>` trong `components/world/stations/`; mỗi thẻ nhận một hàm vẽ canvas từ `art.ts`. Trên máy không hỗ trợ WebGL, trang vẫn hiển thị phần chữ trên nền tối.
+
+Thêm `?snap=1` vào đường dẫn (ví dụ `/ho-so/8/?s=4&snap=1`) để mọi chuyển động nhảy thẳng tới trạng thái cuối. Chế độ này chỉ dùng khi chụp ảnh kiểm tra trên máy yếu.

@@ -1,9 +1,10 @@
 "use client";
 // Bộ công cụ dùng chung cho các cảnh 3D: nhãn chữ (sprite), làm mượt giá trị, bảng màu.
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
+const SNAP_LABEL = typeof window !== "undefined" && /[?&]snap=1/.test(window.location.search);
 export const COL = {
   bg: "#12100d", paper: "#efe7d6", ink: "#1a1a1a", red: "#d33a3f", redDeep: "#9e1b24",
   gold: "#d8b250", green: "#4f9e6c", greenDeep: "#2a5a3c", dim: "#4d483f", cyan: "#7fb6c9",
@@ -16,9 +17,11 @@ export function useFontsReady() {
     let alive = true;
     const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
     if (!fonts) return;
+    // nạp cả bộ chữ tiếng Việt (phông chia theo unicode-range; mặc định chỉ nạp phần Latin)
+    const VI = "Aa ạảãắằẳẵặấầẩẫậđẹẻẽếềểễệịỉĩọỏõốồổỗộớờởỡợụủũứừửữựỳỷỹỵ";
     Promise.all([
-      fonts.load('600 48px "Be Vietnam Pro"'), fonts.load('700 48px "Be Vietnam Pro"'),
-      fonts.load('700 48px "JetBrains Mono"'), fonts.load('800 48px "Noto Serif"'), fonts.load('400 48px "Patrick Hand"'),
+      fonts.load('600 48px "Be Vietnam Pro"', VI), fonts.load('700 48px "Be Vietnam Pro"', VI),
+      fonts.load('700 48px "JetBrains Mono"', VI), fonts.load('800 48px "Noto Serif"', VI), fonts.load('400 48px "Patrick Hand"', VI),
     ]).catch(() => null).then(() => fonts.ready).then(() => { if (alive) setReady(r => r + 1); });
     return () => { alive = false; };
   }, []);
@@ -67,12 +70,14 @@ export function Label({ text, position = [0, 0, 0], rotation, size = 0.2, show =
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [text, style.color, style.bg, style.border, style.font, style.weight, style.tracking, fonts]);
   useEffect(() => () => tex.dispose(), [tex]);
+  const gl = useThree(s => s.gl);
+  useEffect(() => { gl.initTexture(tex); }, [gl, tex]); // tải sẵn lên GPU, kể cả khi nhãn đang ẩn
   const mat = useRef<THREE.SpriteMaterial | THREE.MeshBasicMaterial>(null);
   const grp = useRef<THREE.Object3D>(null);
   useFrame((_, dt) => {
     const m = mat.current; if (!m) return;
     const target = show ? opacity : 0;
-    m.opacity += (target - m.opacity) * Math.min(1, dt * 6);
+    m.opacity += (target - m.opacity) * Math.min(1, dt * 6 * (SNAP_LABEL ? 100 : 1));
     if (grp.current) grp.current.visible = m.opacity > 0.01;
   });
   const h = size * lines * 1.28 + (style.bg || style.border ? size * 0.64 : size * 0.2);

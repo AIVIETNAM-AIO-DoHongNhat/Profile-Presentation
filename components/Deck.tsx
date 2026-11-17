@@ -2,15 +2,13 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { SLIDES, SECTIONS, SEC_OF, TITLES, stepsOf } from "@/content/slides";
+import { GROUP, SLIDES, SECTIONS, SEC_COLOR, SEC_OF, TITLES, stepsOf } from "@/content/slides";
 import Overlay from "./Overlay";
 
 // Thế giới 3D: dựng một lần, không bị gỡ khi đổi trang (layout giữ Deck qua các route).
 const World = dynamic(() => import("./world/World"), { ssr: false });
 
 const TOTAL = SLIDES.length;
-/** Màu nhận diện từng mục trên màn hình tổng quan. */
-const SEC_COLOR: Record<string, string> = { I: "#c8323a", II: "#d8b250", III: "#4f9e6c", IV: "#4a8fd0", V: "#a06ad0", VI: "#3fb0a8" };
 
 type FsDoc = Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => void };
 type FsEl = HTMLElement & { webkitRequestFullscreen?: () => void };
@@ -103,7 +101,7 @@ export default function Deck() {
         <div className="vignette" />
         {slide.kind !== "cover" && (
           <div className="hud-id">
-            <b className="serif">{sec || "·"}</b>
+            <b className="mono">{sec || "·"}</b>
             <span className="mono">TRANG {String(n).padStart(2, "0")}/{TOTAL}</span>
           </div>
         )}
@@ -124,13 +122,13 @@ export default function Deck() {
         {max > 0 && (
           <div className="stepper" data-noadvance>
             <span className="mono">BƯỚC {step + 1}/{max + 1}</span>
-            {Array.from({ length: max + 1 }, (_, i) => <button key={i} aria-label={`Bước ${i + 1}`} className={i <= step ? "on" : ""} onClick={() => setStep(i)} />)}
+            {Array.from({ length: max + 1 }, (_, i) => <button key={i} aria-label={`Bước ${i + 1}`} className={`${i <= step ? "on" : ""} ${i === step ? "cur" : ""}`} onClick={() => setStep(i)} />)}
           </div>
         )}
         {overview && (
           <div className="overview" data-noadvance onClick={e => { if (e.target === e.currentTarget) setOverview(false); }}>
             <header className="ov-head">
-              <div><span className="mono">HỒ SƠ CHUYÊN ĐỀ · HS-01/KGM</span><h2 className="serif">Tổng quan hồ sơ</h2></div>
+              <div><span className="mono">CHUYÊN ĐỀ · {GROUP.toUpperCase()}</span><h2>Tổng quan</h2></div>
               <div className="ov-legend">
                 {SECTIONS.map(sec => <span key={sec.n} style={{ "--sc": SEC_COLOR[sec.n] } as React.CSSProperties}><i />{sec.n} · {sec.label}</span>)}
               </div>
@@ -138,14 +136,14 @@ export default function Deck() {
             </header>
             <div className="ov-grid">
               {TITLES.map((t, i) => {
-                const sec = String(SEC_OF[i + 1]), root = sec.split(".")[0], color = SEC_COLOR[root] ?? "#8a8173";
+                const sec = String(SEC_OF[i + 1]), root = sec.split(".")[0], color = SEC_COLOR[root] ?? "#56657c";
                 const [kick, main] = t.includes(" · ") ? t.split(" · ") : ["", t];
                 return (
                   <button key={i} className={`ov-card ${i + 1 === n ? "on" : ""}`} style={{ "--sc": color, animationDelay: `${i * 0.025}s` } as React.CSSProperties} onClick={() => goTo(i + 1)}>
-                    <span className="ov-tab mono">{root && root !== "§" ? `MỤC ${sec}` : "HỒ SƠ"}</span>
+                    <span className="ov-tab mono">{root ? `MỤC ${sec}` : "CHUNG"}</span>
                     {kick && <small className="mono">{kick}</small>}
-                    <b className="serif">{main}</b>
-                    <em className="serif">{String(i + 1).padStart(2, "0")}</em>
+                    <b>{main}</b>
+                    <em className="mono">{String(i + 1).padStart(2, "0")}</em>
                     {i + 1 === n && <i className="mono">ĐANG XEM</i>}
                   </button>
                 );

@@ -1,200 +1,253 @@
 "use client";
-// "Phòng chuyên án": một canvas duy nhất cho cả 15 trang. Mỗi trang là một trạm trên mặt bàn,
-// camera lướt giữa các trạm, dây đỏ tự vẽ dần nối trạm cũ với trạm mới.
+// "Bên trong hồ sơ": một canvas duy nhất cho cả 14 trang. Mỗi trang là một tờ giấy trải trong bìa hồ sơ,
+// sơ đồ dựng đứng lên khỏi tờ giấy như sách pop-up, sợi chỉ đỏ nối tờ trước với tờ sau.
+import { PerformanceMonitor } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { EffectComposer, N8AO, SMAA } from "@react-three/postprocessing";
+import gsap from "gsap";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { SLIDES, SEC_OF, TITLES, stepsOf } from "@/content/slides";
-import { damp, rng } from "../three/kit";
-import { TOTAL, anchorOf, shotFor, stationPos, CENTER } from "./layout";
-import { Beam, F, HEX, Pin, canvasTex, feltTexture, useTex } from "./props";
-import { CoverStation, TeamStation } from "./stations/Intro";
+import { SLIDES, stepsOf } from "@/content/slides";
+import { damp } from "../three/kit";
+import { C, INK, LiveCtx, SNAP, ShakeCtx, Swarm, hdr, rng, sdt, useCanvasTex } from "./fx";
+import { CENTER, TOTAL, anchorOf, shotFor, stationPos } from "./layout";
+import { ArtBaker, BakeCtx } from "./pop";
+import { ClosingStation, CoverStation, TeamStation } from "./stations/Intro";
 import { ConceptStation, FeaturesStation, FormsStation, TypesStation } from "./stations/Theory";
-import { NetworkStation } from "./stations/Network";
-import { CaseStation, StageStation } from "./stations/Cases";
-import { ClosingStation } from "./stations/Outro";
+import { MethodStation } from "./stations/Methods";
+import { SolutionsStation } from "./stations/Solutions";
+import { TocStation } from "./stations/Toc";
 
 type WP = { n: number; step: number };
 
-function Station({ k, n, step }: { k: number } & WP) {
-  const s = SLIDES[k - 1], active = k === n, st = active ? step : k < n ? stepsOf(s) : 0;
+/** memo: đổi bước ở trạm này không làm các trạm khác render lại. */
+const Station = memo(function Station({ k, step }: { k: number; step: number }) {
+  const s = SLIDES[k - 1];
   switch (s.kind) {
-    case "cover": return <CoverStation step={st} active={active} />;
-    case "team": return <TeamStation step={st} />;
-    case "concept": return <ConceptStation step={st} />;
-    case "features": return <FeaturesStation step={st} />;
-    case "types": return <TypesStation step={st} />;
-    case "case": return <CaseStation d={s.data} step={st} active={active} />;
-    case "forms": return <FormsStation step={st} />;
-    case "network": return <NetworkStation step={st} />;
-    case "stage": return <StageStation s={s} step={st} active={active} />;
-    case "conclusion": return <TypesStation step={2} monitor />;
-    case "closing": return <ClosingStation step={st} active={active} />;
+    case "cover": return <CoverStation />;
+    case "team": return <TeamStation step={step} />;
+    case "toc": return <TocStation />;
+    case "concept": return <ConceptStation step={step} />;
+    case "features": return <FeaturesStation step={step} />;
+    case "types": return <TypesStation step={step} />;
+    case "forms": return <FormsStation step={step} />;
+    case "method": return <MethodStation m={s.m} step={step} />;
+    case "solutions": return <SolutionsStation step={step} />;
+    case "closing": return <ClosingStation />;
     default: return null;
   }
-}
+});
 
-/* ---------- camera ---------- */
-function Rig({ n, step }: WP) {
+/* ---------- camera: mỗi lần đổi góc máy là một cú máy GSAP ---------- */
+// Hai kiểu cú máy:
+// · "cut" (sang trang khác): màn giấy mờ dần che khung hình, camera đặt thẳng vào trang mới trong lúc bị che,
+//   rồi màn giấy tan ra và camera đẩy vào nhẹ để ổn định. Không bay qua mặt bàn nên không gây chóng mặt.
+// · "arc" (đổi nhịp trong cùng trang): bay ngắn theo đường cong Bézier, vồng lên rất ít.
+// Khi cảnh mới bắt đầu hiện ra, báo `onArrive` để các thẻ của trạm mới bật dựng đúng lúc người xem nhìn thấy.
+type Flight =
+  | { kind: "arc"; pos: THREE.Vector3; ctrl: THREE.Vector3; look: THREE.Vector3; fov: number; shift: number }
+  | { kind: "cut"; pos: THREE.Vector3; look: THREE.Vector3; fov: number; shift: number; from: THREE.Vector3 };
+const VEIL_IN = 0.28, VEIL_OUT = 0.62; // tiến độ cú máy: che kín ở VEIL_IN, tan hết ở VEIL_OUT
+function Rig({ n, step, onArrive, shake, veil }: WP & { onArrive: (n: number) => void; shake: React.MutableRefObject<number>; veil: React.RefObject<HTMLDivElement | null> }) {
   const { camera, size } = useThree();
+  const shot = shotFor(n, step), off = shot.abs ? [0, 0, 0] : stationPos(n).toArray();
+  const key = [...shot.pos.map((v, i) => v + off[i]), ...shot.look.map((v, i) => v + off[i]), shot.fov ?? 40, shot.shift ?? 0.17].join(",");
   const target = useMemo(() => {
-    const s = shotFor(n, step), o = s.abs ? new THREE.Vector3() : stationPos(n);
-    return { pos: new THREE.Vector3(...s.pos).add(o), look: new THREE.Vector3(...s.look).add(o), fov: s.fov ?? 40, shift: s.shift ?? 0.17 };
-  }, [n, step]);
-  const st = useRef<{ look: THREE.Vector3; fov: number; shift: number; t: number } | null>(null);
-  const tmp = useMemo(() => new THREE.Vector3(), []);
-  useFrame(({ pointer }, dt) => {
-    const cam = camera as THREE.PerspectiveCamera;
-    if (!st.current) { cam.position.copy(target.pos); st.current = { look: target.look.clone(), fov: target.fov, shift: target.shift, t: 0 }; }
-    const c = st.current, k = 1.6; c.t += dt;
-    const far = cam.position.distanceTo(target.pos);
-    tmp.copy(target.pos);
-    tmp.x += pointer.x * 0.35 + Math.sin(c.t * 0.21) * 0.12; tmp.y += pointer.y * 0.2 + Math.min(far * 0.28, 9); // bay vòng lên khi đi xa
-    cam.position.set(damp(cam.position.x, tmp.x, k, dt), damp(cam.position.y, tmp.y, k, dt), damp(cam.position.z, tmp.z, k, dt));
-    c.look.set(damp(c.look.x, target.look.x, k * 1.15, dt), damp(c.look.y, target.look.y, k * 1.15, dt), damp(c.look.z, target.look.z, k * 1.15, dt));
-    c.fov = damp(c.fov, target.fov, k, dt); c.shift = damp(c.shift, target.shift, k, dt);
+    const k = key.split(",").map(Number);
+    return { pos: new THREE.Vector3(k[0], k[1], k[2]), look: new THREE.Vector3(k[3], k[4], k[5]), fov: k[6], shift: k[7] };
+  }, [key]);
+  const st = useRef<{ base: THREE.Vector3; look: THREE.Vector3; fov: number; shift: number; t: number; px: number; py: number } | null>(null);
+  const prog = useRef({ v: 1 }), flight = useRef<Flight | null>(null), tween = useRef<gsap.core.Tween | null>(null), arrive = useRef<number | null>(null);
+  const lastN = useRef(n);
+
+  useEffect(() => { arrive.current = n; }, [n]);
+  useEffect(() => {
+    const c = st.current; if (!c) return; // khung hình đầu: đặt thẳng camera vào chỗ
+    const from = lastN.current; lastN.current = n;
+    const busy = !!tween.current?.isActive();
+    tween.current?.kill(); prog.current.v = 0;
+    let duration: number, ease: string;
+    if (n !== from) {
+      // điểm bắt đầu đẩy máy: lùi ra sau và cao hơn góc máy đích một chút
+      const back = target.pos.clone().sub(target.look).normalize().multiplyScalar(2.2).add(new THREE.Vector3(0, 0.5, 0)).add(target.pos);
+      flight.current = { kind: "cut", pos: c.base.clone(), look: c.look.clone(), fov: c.fov, shift: c.shift, from: back };
+      duration = 1.5; ease = "none";
+    } else {
+      const pos = c.base.clone(), dist = pos.distanceTo(target.pos);
+      const ctrl = pos.clone().lerp(target.pos, 0.5); ctrl.y += Math.min(dist * 0.15, 2.5);
+      flight.current = { kind: "arc", pos, ctrl, look: c.look.clone(), fov: c.fov, shift: c.shift };
+      // đang bay dở mà đổi đích: rẽ ngay (không tăng tốc lại từ 0)
+      duration = Math.min(1.8, Math.max(0.9, 0.9 + dist * 0.04)); ease = busy ? "power2.out" : "sine.inOut";
+    }
+    tween.current = gsap.to(prog.current, { v: 1, duration, ease });
+    if (SNAP) tween.current.progress(1);
+  }, [target]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => { tween.current?.kill(); }, []);
+
+  useFrame(({ pointer }, rawDt) => {
+    const dt = sdt(rawDt), cam = camera as THREE.PerspectiveCamera;
+    if (!st.current) st.current = { base: target.pos.clone(), look: target.look.clone(), fov: target.fov, shift: target.shift, t: 0, px: 0, py: 0 };
+    const c = st.current, f = flight.current, v = prog.current.v; c.t += dt;
+    const L = THREE.MathUtils.lerp;
+    let veilA = 0;
+    if (f?.kind === "arc") {
+      const a = 1 - v;
+      c.base.set(0, 0, 0).addScaledVector(f.pos, a * a).addScaledVector(f.ctrl, 2 * a * v).addScaledVector(target.pos, v * v);
+      c.look.lerpVectors(f.look, target.look, Math.min(1, v * 1.12));
+      c.fov = L(f.fov, target.fov, v); c.shift = L(f.shift, target.shift, v);
+    } else if (f?.kind === "cut") {
+      if (v < VEIL_IN) { // màn giấy che dần, camera đứng yên ở trang cũ
+        const u = v / VEIL_IN; veilA = u * u * (3 - 2 * u);
+        c.base.copy(f.pos); c.look.copy(f.look); c.fov = f.fov; c.shift = f.shift;
+      } else { // đã ở trang mới: màn giấy tan, camera đẩy vào nhẹ rồi dừng hẳn
+        const u = (v - VEIL_IN) / (1 - VEIL_IN), e = 1 - Math.pow(1 - u, 3);
+        veilA = 1 - Math.min(1, (v - VEIL_IN) / (VEIL_OUT - VEIL_IN)); veilA = veilA * veilA * (3 - 2 * veilA);
+        c.base.lerpVectors(f.from, target.pos, e); c.look.copy(target.look); c.fov = target.fov; c.shift = target.shift;
+      }
+    }
+    if (veil.current) veil.current.style.opacity = veilA > 0.001 ? veilA.toFixed(3) : "0";
+    if (arrive.current !== null && v >= (f?.kind === "cut" ? VEIL_IN + 0.05 : 0.72)) { onArrive(arrive.current); arrive.current = null; }
+    // rung nhẹ theo chuột và "thở" chậm, cộng sau cú máy
+    c.px = damp(c.px, pointer.x, 2, dt); c.py = damp(c.py, pointer.y, 2, dt);
+    cam.position.copy(c.base); cam.position.x += c.px * 0.4 + Math.sin(c.t * 0.21) * 0.15; cam.position.y += c.py * 0.25;
+    // rung khi có va chạm / con dấu đập xuống: dao động nhanh, tắt dần
+    const sh = shake.current; shake.current = sh * Math.exp(-dt * 9);
+    if (sh > 0.002) { cam.position.x += Math.sin(c.t * 61) * sh; cam.position.y += Math.sin(c.t * 47 + 1) * sh * 0.8; }
     cam.fov = c.fov; cam.setViewOffset(size.width, size.height, -c.shift * size.width, 0, size.width, size.height); cam.updateProjectionMatrix();
     cam.lookAt(c.look);
   });
   return null;
 }
 
-/* ---------- ánh sáng, sương ---------- */
-function Atmosphere({ n, overview }: { n: number; overview: boolean }) {
-  const spot = useRef<THREE.SpotLight>(null!), amb = useRef<THREE.AmbientLight>(null!);
+/* ---------- bìa hồ sơ và các tờ giấy ---------- */
+const SHEET_W = 30, SHEET_D = 20, SHEET_Y = -1.55;
+function sheetDraw(k: number) {
+  return (g: CanvasRenderingContext2D, W: number, H: number) => {
+    const R = rng(100 + k), u = W / SHEET_W;
+    g.fillStyle = "#f6f1e6"; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 9000; i++) { g.fillStyle = `rgba(90,70,40,${R() * 0.05})`; g.fillRect(R() * W, R() * H, 2, 2); } // hạt giấy
+    g.strokeStyle = "rgba(60,80,100,.08)"; g.lineWidth = 1.5; // giấy kẻ ô mờ
+    for (let x = 2 * u; x < W - u; x += u) { g.beginPath(); g.moveTo(x, 1.6 * u); g.lineTo(x, H - u); g.stroke(); }
+    for (let y = 1.6 * u; y < H - u; y += u) { g.beginPath(); g.moveTo(2 * u, y); g.lineTo(W - u, y); g.stroke(); }
+    g.strokeStyle = "rgba(176,38,31,.55)"; g.lineWidth = 3; g.beginPath(); g.moveTo(2 * u, 0); g.lineTo(2 * u, H); g.stroke(); // lề đỏ
+    g.fillStyle = "rgba(0,0,0,.12)"; [0.25, 0.5, 0.75].forEach(f => { g.beginPath(); g.arc(0.9 * u, H * f, 0.28 * u, 0, Math.PI * 2); g.fill(); }); // lỗ bấm
+  };
+}
+function Sheet({ k }: { k: number }) {
+  const tex = useCanvasTex(2400, 1600, sheetDraw(k), [k]);
+  const p = stationPos(k), rot = (rng(k * 7)() - 0.5) * 0.03;
+  return <mesh rotation={[-Math.PI / 2, 0, rot]} position={[p.x, SHEET_Y, p.z + 0.5]}><planeGeometry args={[SHEET_W, SHEET_D]} /><meshBasicMaterial map={tex} /></mesh>;
+}
+function Folder() {
+  const tex = useCanvasTex(1024, 1024, (g, W, H) => {
+    const R = rng(5); g.fillStyle = "#d9c7a0"; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 26000; i++) { g.fillStyle = `rgba(${R() < 0.5 ? "120,90,50" : "255,250,235"},${R() * 0.08})`; g.fillRect(R() * W, R() * H, 2, 2); }
+  }, []);
+  useEffect(() => { tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(14, 10); tex.needsUpdate = true; }, [tex]);
+  return <mesh rotation={[-Math.PI / 2, 0, 0]} position={[CENTER.x, SHEET_Y - 0.03, CENTER.z]}><planeGeometry args={[260, 190]} /><meshBasicMaterial map={tex} /></mesh>;
+}
+/** Đèn bàn: chỉ để đổ bóng mềm của sơ đồ xuống tờ giấy. */
+function Lamp({ n }: { n: number }) {
+  const light = useRef<THREE.DirectionalLight>(null!), recv = useRef<THREE.Mesh>(null!);
   const { scene } = useThree();
-  const tgt = useMemo(() => new THREE.Object3D(), []);
-  useEffect(() => { scene.add(tgt); spot.current.target = tgt; return () => { scene.remove(tgt); }; }, [scene, tgt]);
-  const ov = useRef(overview ? 1 : 0);
-  useFrame(({ clock }, dt) => {
-    const p = stationPos(n);
-    tgt.position.set(damp(tgt.position.x, p.x, 1.8, dt), 0, damp(tgt.position.z, p.z, 1.8, dt));
-    spot.current.position.set(tgt.position.x + 3, 17, tgt.position.z + 8);
-    ov.current = damp(ov.current, overview ? 1 : 0, 2, dt);
-    spot.current.intensity = (3.6 + Math.sin(clock.elapsedTime * 7) * 0.05) * (1 - ov.current * 0.6);
-    amb.current.intensity = 0.32 + ov.current * 1.5;
-    // nhìn toàn bàn: dừng cập nhật bản đồ bóng (đắt nhất khi dựng cả 15 trạm), không đổi shader nên không giật
-    spot.current.shadow.autoUpdate = ov.current < 0.5;
-    const fog = scene.fog as THREE.Fog; fog.near = 15 + ov.current * 170; fog.far = 31 + ov.current * 280;
+  useEffect(() => { scene.add(light.current.target); }, [scene]);
+  useFrame((_, dt) => {
+    const p = stationPos(n), t = light.current.target.position;
+    t.set(damp(t.x, p.x, 3, sdt(dt)), 0, damp(t.z, p.z, 3, sdt(dt)));
+    light.current.position.set(t.x - 6, 22, t.z + 9); recv.current.position.set(t.x, SHEET_Y + 0.01, t.z + 0.5);
   });
   return <>
-    <fog attach="fog" args={[HEX.night, 15, 31]} />
-    <ambientLight ref={amb} intensity={0.32} color="#ffe9c8" />
-    <hemisphereLight args={["#5a6a7a", "#1a120a", 0.35]} />
-    <spotLight ref={spot} angle={0.62} penumbra={0.75} decay={0} intensity={3.6} color="#ffe2b0" castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0004} shadow-normalBias={0.02} shadow-camera-near={4} shadow-camera-far={45} />
-    <directionalLight position={[-20, 10, -10]} intensity={0.25} color="#7f9fc0" />
+    <directionalLight ref={light} intensity={1} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-17} shadow-camera-right={17} shadow-camera-top={13} shadow-camera-bottom={-13} shadow-camera-near={2} shadow-camera-far={50} shadow-radius={6} shadow-bias={-0.0005} />
+    <mesh ref={recv} rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[SHEET_W, SHEET_D]} /><shadowMaterial transparent opacity={0.1} /></mesh>
   </>;
 }
 
-function Desk() {
-  const felt = useTex(feltTexture, []);
-  return <mesh rotation={[-Math.PI / 2, 0, 0]} position={[CENTER.x, 0, CENTER.z]} receiveShadow><planeGeometry args={[400, 300]} /><meshStandardMaterial map={felt} roughness={1} color="#8a7a66" /></mesh>;
-}
-
-/* ---------- dây đỏ nối các trạm ---------- */
-function threadCurve(a: number) {
-  const A = anchorOf(a), B = anchorOf(a + 1);
-  const pts = [A];
-  if (Math.abs(A.z - B.z) > 1) { const side = A.x < 1 ? A.x - 3.5 : A.x + 19; pts.push(new THREE.Vector3(side, 0.04, A.z), new THREE.Vector3(side, 0.04, B.z)); }
-  else pts.push(A.clone().lerp(B, 0.5).add(new THREE.Vector3(0, 0.03, 0.6)));
+/* ---------- chỉ đỏ nối các tờ ---------- */
+function fiberCurve(a: number) {
+  const A = anchorOf(a), B = anchorOf(a + 1), pts = [A];
+  if (Math.abs(A.z - B.z) > 1) { const side = A.x < 1 ? A.x - 19 : A.x + 19; pts.push(new THREE.Vector3(side, -1.5, A.z), new THREE.Vector3(side, -1.5, B.z)); }
+  else pts.push(A.clone().lerp(B, 0.5).add(new THREE.Vector3(0, 0.05, 0.8)));
   pts.push(B);
   return new THREE.CatmullRomCurve3(pts, false, "centripetal");
 }
-function Thread({ n }: { n: number }) {
-  const SEG = 120;
-  const geos = useMemo(() => Array.from({ length: TOTAL - 1 }, (_, j) => new THREE.TubeGeometry(threadCurve(j + 1), SEG, 0.085, 6, false)), []);
-  const fr = useRef<number[]>(geos.map((_, j) => (j < n - 1 ? 1 : 0)));
-  useFrame((_, dt) => { geos.forEach((g, j) => { const f = (fr.current[j] = damp(fr.current[j], j < n - 1 ? 1 : 0, 1.4, dt)); g.setDrawRange(0, Math.floor(f * SEG) * 36); }); });
+const FIBER_FS = `varying vec2 vUv; uniform float uProg; uniform vec3 uCol;
+void main(){
+  if (vUv.x > uProg) discard;
+  gl_FragColor = vec4(uCol, 1.);
+  #include <colorspace_fragment>
+}`;
+function Fibers({ n }: { n: number }) {
+  const items = useMemo(() => Array.from({ length: TOTAL - 1 }, (_, j) => {
+    const geo = new THREE.TubeGeometry(fiberCurve(j + 1), 160, 0.045, 6, false);
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { uProg: { value: 1.001 }, uCol: { value: hdr(C.red, 1) } },
+      vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
+      fragmentShader: FIBER_FS, transparent: true, blending: INK, depthWrite: false,
+    });
+    return { geo, mat };
+  }), []);
+  useEffect(() => () => items.forEach(i => { i.geo.dispose(); i.mat.dispose(); }), [items]);
+  const pins = useMemo(() => ({ cur: hdr(C.red, 1.2), past: hdr(C.red, 0.8), future: hdr(C.grey, 0.5) }), []);
   return <group>
-    {geos.map((g, j) => <mesh key={j} geometry={g} castShadow><meshStandardMaterial color={HEX.red} emissive={HEX.red} emissiveIntensity={0.35} roughness={0.55} /></mesh>)}
-    {Array.from({ length: TOTAL }, (_, i) => <Pin key={i} position={anchorOf(i + 1).toArray()} color={i + 1 <= n ? (i + 1 === n ? HEX.gold : HEX.red) : "#5a5245"} s={2.2} />)}
+    {items.map((it, j) => <mesh key={j} geometry={it.geo} material={it.mat} frustumCulled={false} />)}
+    <Swarm count={TOTAL} size={0.2} update={(i, o) => { o.p.copy(anchorOf(i + 1)); o.c.copy(i + 1 === n ? pins.cur : i + 1 < n ? pins.past : pins.future); }} />
   </group>;
 }
 
-/* ---------- bảng tên trạm (hiện khi nhìn toàn bàn) ---------- */
-function plateTex(i: number) {
-  return canvasTex(1200, 360, (g, W, H) => {
-    g.fillStyle = "#efe8d8"; g.fillRect(0, 0, W, H);
-    g.fillStyle = "#b3202a"; g.fillRect(0, 0, 22, H);
-    g.fillStyle = "#b3202a"; g.font = F.serif(170); g.fillText(String(i + 1).padStart(2, "0"), 60, 220);
-    g.fillStyle = "#7a776f"; g.font = F.mono(46); g.fillText(String(SEC_OF[i + 1]) || "·", 330, 110);
-    g.fillStyle = "#1a1a1a"; g.font = F.sans(70, 700);
-    const words = TITLES[i].split(" · "); g.fillText(words[0], 330, 210); if (words[1]) { g.font = F.serif(56, 400, true); g.fillStyle = "#4a4a46"; g.fillText(words[1], 330, 290); }
-  });
-}
-function Plate({ i, overview, hot }: { i: number; overview: boolean; hot: boolean }) {
-  const tex = useTex(() => plateTex(i), [i]);
-  const m = useRef<THREE.MeshBasicMaterial>(null!), mesh = useRef<THREE.Mesh>(null!);
-  useFrame((_, dt) => { m.current.opacity = damp(m.current.opacity, overview ? (hot ? 1 : 0.92) : 0, 2.5, dt); mesh.current.visible = m.current.opacity > 0.01; });
-  const p = stationPos(i + 1);
-  return <mesh ref={mesh} position={[p.x - 0.5, 0.3, p.z + 6.6]} rotation={[-Math.PI / 2.6, 0, 0]}><planeGeometry args={[11, 3.3]} /><meshBasicMaterial ref={m} map={tex} transparent opacity={0} depthWrite={false} toneMapped={false} /></mesh>;
+/* ---------- hậu kỳ: bóng tiếp xúc, khử răng cưa ---------- */
+// Bộ đệm 8 bit (sRGB) để hòa trộn trừ của nét mực cho ra đúng màu như khi vẽ thẳng ra màn hình.
+function Post({ enabled, hq }: { enabled: boolean; hq: boolean }) {
+  return (
+    <EffectComposer key={hq ? "hq" : "lq"} enabled={enabled} multisampling={0} frameBufferType={THREE.UnsignedByteType}>
+      {hq ? <N8AO halfRes aoRadius={1.1} distanceFalloff={0.6} intensity={1.6} color="#4a3a24" /> : <></>}
+      <SMAA />
+    </EffectComposer>
+  );
 }
 
-/* ---------- bụi bay trong luồng đèn ---------- */
-function Dust({ n }: { n: number }) {
-  const pts = useRef<THREE.Points>(null!);
-  const { geo, base } = useMemo(() => {
-    const r = rng(9), c = 300, arr = new Float32Array(c * 3);
-    for (let i = 0; i < c; i++) { arr[i * 3] = (r() - 0.5) * 18; arr[i * 3 + 1] = r() * 9; arr[i * 3 + 2] = (r() - 0.5) * 12; }
-    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(arr, 3)); return { geo: g, base: arr.slice() };
-  }, []);
-  useFrame(({ clock }, dt) => {
-    const t = clock.elapsedTime, a = geo.getAttribute("position") as THREE.BufferAttribute, arr = a.array as Float32Array;
-    for (let i = 0; i < arr.length; i += 3) { arr[i] = base[i] + Math.sin(t * 0.13 + i) * 0.3; arr[i + 1] = (base[i + 1] + t * 0.08) % 9; }
-    a.needsUpdate = true;
-    const p = stationPos(n); pts.current.position.set(damp(pts.current.position.x, p.x, 1.6, dt), 0, damp(pts.current.position.z, p.z, 1.6, dt));
-  });
-  return <points ref={pts} geometry={geo} frustumCulled={false}><pointsMaterial size={0.035} color="#ffe6b8" transparent opacity={0.5} depthWrite={false} blending={THREE.AdditiveBlending} /></points>;
-}
-
-/* ---------- trang 14: soi lại các trạm minh chứng cho từng nhận xét ---------- */
-const PROOF: number[][] = [[11, 12, 13], [10], [6]];
-function Proofs({ n, step }: WP) {
-  const on = SLIDES[n - 1].kind === "conclusion";
-  return <>{[6, 10, 11, 12, 13].map(k => { const p = stationPos(k); return <Beam key={k} position={[p.x + 1, 0, p.z + 1]} on={on && (PROOF[step] ?? []).includes(k)} r={8} h={34} color={HEX.gold} />; })}</>;
-}
-
-/* ---------- trang 15, nhịp tổng hợp: đèn vàng lần lượt soi lại toàn bộ 14 trạm ---------- */
-function Recap({ n, step }: WP) {
-  const on = SLIDES[n - 1].kind === "closing" && step === 0;
-  const [k, setK] = useState(0);
-  useEffect(() => {
-    if (!on) { setK(0); return; }
-    let i = 0; const id = setInterval(() => { i += 1; setK(i); if (i >= TOTAL - 1) clearInterval(id); }, 220);
-    return () => clearInterval(id);
-  }, [on]);
-  return <>{Array.from({ length: TOTAL - 1 }, (_, i) => { const p = stationPos(i + 1); return <Beam key={i} position={[p.x + 1, 0, p.z + 1]} on={on && i < k} r={7} h={34} color={HEX.gold} />; })}</>;
-}
-
-function Scene({ n, step }: WP) {
-  const overview = !!shotFor(n, step).overview;
-  const conclusion = SLIDES[n - 1].kind === "conclusion";
-  // Chỉ dựng trạm hiện tại và trạm vừa rời (để camera rời đi không thấy trạm biến mất đột ngột).
+function Scene({ n, step, veil }: WP & { veil: React.RefObject<HTMLDivElement | null> }) {
+  // Chỉ dựng trạm đang xem, trạm vừa rời và dựng sẵn (ẩn) trạm kế tiếp. Texture vẽ dần qua ArtBaker, mỗi khung hình
+  // chỉ tiêu vài ms, nên không bao giờ phải tạo hàng trăm texture cùng lúc.
   const last = useRef(n), prev = useRef(n);
   if (last.current !== n) { prev.current = last.current; last.current = n; }
-  // dựng sẵn cả trạm kế tiếp để texture được tạo trước khi camera bay tới (bớt giật lúc chuyển trang)
-  const mounted = (k: number) => overview || k === n || k === n + 1 || k === prev.current;
-  return <>
-    <color attach="background" args={[HEX.night]} />
-    <Atmosphere n={n} overview={overview} />
-    <Desk />
-    <Thread n={n} />
-    {TITLES.map((_, i) => <Plate key={i} i={i} overview={overview} hot={conclusion && (PROOF[step] ?? []).includes(i + 1)} />)}
+  const [ready, setReady] = useState(n);
+  const [hq, setHq] = useState(true);
+  const mounted = (k: number) => k === n || k === n + 1 || k === prev.current;
+  const stepOf = (k: number) => (k === n ? step : k < n ? stepsOf(SLIDES[k - 1]) : -1);
+  // trạm mới chỉ "sống" (bật thẻ) khi camera đã gần tới; trạm vừa rời giữ nguyên cho tới khi khuất
+  const live = (k: number) => (k === n ? ready === n : k === prev.current);
+  const shakeAmt = useRef(0);
+  const shake = useCallback((s: number) => { if (!SNAP) shakeAmt.current = Math.max(shakeAmt.current, s); }, []);
+  return <ShakeCtx.Provider value={shake}>
+    <color attach="background" args={[C.bg]} />
+    {/* ánh sáng chỉ tác động lên đồ vật 3D (con dấu, ghim, kính lúp); thẻ giấy và nét mực không dùng ánh sáng */}
+    <hemisphereLight args={["#fff6e6", "#b8a684", 1.3]} />
+    <PerformanceMonitor onDecline={() => setHq(false)} onIncline={() => setHq(true)} flipflops={3} onFallback={() => setHq(false)} />
+    <Folder />
+    {Array.from({ length: TOTAL }, (_, i) => <Sheet key={i} k={i + 1} />)}
+    <Lamp n={n} />
+    <Fibers n={n} />
+    <ArtBaker />
     {Array.from({ length: TOTAL }, (_, i) => i + 1).filter(mounted).map(k => (
-      // trạm kế tiếp chỉ dựng sẵn (tạo texture trước), ẩn đi để không lọt vào khung hình
-      <group key={k} position={stationPos(k).toArray()} visible={overview || k === n || k === prev.current}><Station k={k} n={n} step={step} /></group>
+      <group key={k} position={stationPos(k).toArray()} visible={k === n || k === prev.current}>
+        <BakeCtx.Provider value={k === n + 1 && k !== prev.current ? "bg" : "now"}>
+          <LiveCtx.Provider value={live(k)}><Station k={k} step={stepOf(k)} /></LiveCtx.Provider>
+        </BakeCtx.Provider>
+      </group>
     ))}
-    <Proofs n={n} step={step} />
-    <Recap n={n} step={step} />
-    <Dust n={n} />
-    <Rig n={n} step={step} />
-  </>;
+    <Rig n={n} step={step} onArrive={setReady} shake={shakeAmt} veil={veil} />
+    <Post enabled={!SNAP} hq={hq} />
+  </ShakeCtx.Provider>;
 }
 
 export default function World({ n, step }: WP) {
-  return (
-    <Canvas resize={{ scroll: false, offsetSize: true }} shadows dpr={[1, 1.25]} camera={{ fov: 40, near: 0.1, far: 600, position: [0, 10, 10] }} gl={{ antialias: true, powerPreference: "high-performance" }}>
-      <Scene n={n} step={step} />
+  // màn giấy dùng cho chuyển cảnh giữa các trang (độ mờ do camera điều khiển từng khung hình)
+  const veil = useRef<HTMLDivElement>(null);
+  return <>
+    <Canvas flat shadows="soft" resize={{ scroll: false, offsetSize: true }} dpr={[1, 1.5]} camera={{ fov: 40, near: 0.1, far: 900, position: [0, 10, 10] }}
+      gl={{ antialias: true, powerPreference: "high-performance" }}>
+      <Scene n={n} step={step} veil={veil} />
     </Canvas>
-  );
+    <div ref={veil} className="veil" aria-hidden />
+  </>;
 }

@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kịch bản thuyết trình</title>
+<style>
+:root{
+  --bg:#f6f4ee; --panel:#ffffff; --ink:#1a1a1a; --muted:#6b6b66; --line:#dcd8cc;
+  --red:#b3202a; --gold:#8a6d12; --green:#1f4d3a; --chip:#fbe9ea; --a:#1f4d3a; --b:#b3202a;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14161a; --panel:#1c1f25; --ink:#ece9e1; --muted:#9a9a93; --line:#2e323a;
+    --red:#ff6b73; --gold:#e0be5a; --green:#6fcf9f; --chip:#3a1f22; --a:#6fcf9f; --b:#ff8a91;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14161a; --panel:#1c1f25; --ink:#ece9e1; --muted:#9a9a93; --line:#2e323a;
+  --red:#ff6b73; --gold:#e0be5a; --green:#6fcf9f; --chip:#3a1f22; --a:#6fcf9f; --b:#ff8a91;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI","Be Vietnam Pro",system-ui,-apple-system,sans-serif;line-height:1.65}
+header.top{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 16px}
+.bar{max-width:920px;margin:0 auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar h1{font-size:15px;margin:0 auto 0 0;font-weight:700;letter-spacing:.2px}
+button,select{font:inherit;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.timer{font-variant-numeric:tabular-nums;font-weight:700;min-width:58px;text-align:center}
+main{max-width:920px;margin:0 auto;padding:20px 16px 80px}
+.intro{border-left:4px solid var(--red);padding:4px 14px;margin:6px 0 22px;color:var(--muted);font-size:14px}
+.intro b{color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 20px;font-size:13px;color:var(--muted)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+article.slide{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:0 0 16px}
+article.slide header{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:baseline;margin-bottom:10px}
+.num{font-weight:800;color:var(--red);font-size:13px;letter-spacing:.5px}
+.ttl{font-weight:700;font-size:1.1em;flex:1 1 220px}
+.meta{font-size:12px;color:var(--muted)}
+.who{font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;border:1px solid currentColor}
+.who.a{color:var(--a)} .who.b{color:var(--b)}
+article.slide p{margin:0 0 .75em;font-size:var(--fs,18px)}
+.chip{display:inline-block;background:var(--chip);color:var(--red);border:1px solid var(--red);border-radius:6px;font-size:.62em;font-weight:700;padding:0 6px;margin:0 3px;vertical-align:.18em;letter-spacing:.3px}
+.handoff{font-size:12px;color:var(--gold);font-weight:700;margin:-4px 0 10px}
+.notes{margin-top:26px;font-size:14px;color:var(--muted)}
+.notes li{margin:4px 0}
+/* chế độ đọc từng trang */
+body.focus article.slide{display:none}
+body.focus article.slide.cur{display:block}
+body.focus article.slide p{font-size:var(--fs,26px)}
+.nav{display:none;justify-content:space-between;align-items:center;gap:10px;margin:10px 0}
+body.focus .nav{display:flex}
+.nav .count{font-size:13px;color:var(--muted)}
+.hidden{display:none !important}
+@media (max-width:560px){ .bar h1{flex:1 1 100%} }
+@media print{ header.top,.nav{display:none} article.slide{break-inside:avoid;border-color:#999} body{background:#fff;color:#000} }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="bar">
+    <h1>Kịch bản thuyết trình · Tiểu đội 2</h1>
+    <select id="who" aria-label="Lọc theo người thuyết trình">
+      <option value="all">Cả hai người</option>
+      <option value="a">Chỉ phần của Phú</option>
+      <option value="b">Chỉ phần của Long</option>
+    </select>
+    <button id="mode" aria-pressed="false" title="Phím F">Đọc từng trang</button>
+    <button id="minus" title="Giảm cỡ chữ" aria-label="Giảm cỡ chữ">A−</button>
+    <button id="plus" title="Tăng cỡ chữ" aria-label="Tăng cỡ chữ">A+</button>
+    <button id="chips" aria-pressed="true" title="Ẩn hoặc hiện nhãn bấm">Nhãn bấm</button>
+    <button id="theme" title="Đổi giao diện sáng tối">Sáng/Tối</button>
+    <span class="timer" id="clock">00:00</span>
+    <button id="go">Bắt đầu</button>
+    <button id="reset" title="Đặt lại đồng hồ">⟲</button>
+  </div>
+</header>
+
+<main>
+  <h2 style="margin:0 0 6px;font-size:1.35em">Tập hợp lực lượng, thành lập tổ chức phản động trên không gian mạng</h2>
+  <div class="intro">
+    Thời lượng dự kiến <b>12 đến 13 phút</b>. Phú đọc trang 1 đến 9, Long đọc trang 10 đến 15. Có thể đổi vai tùy nhóm.
+    Phím tắt trong chế độ đọc từng trang: <b>← →</b> chuyển trang, <b>F</b> bật tắt chế độ, <b>Space</b> bật tắt đồng hồ.
+  </div>
+  <div class="legend">
+    <span><span class="dot" style="background:var(--a)"></span>Phú (trang 1 đến 9)</span>
+    <span><span class="dot" style="background:var(--b)"></span>Long (trang 10 đến 15)</span>
+    <span><span class="chip">bấm</span> một lần bấm chuột để hiện ý tiếp theo</span>
+  </div>
+
+  <div class="nav" id="navTop">
+    <button class="prev">← Trước</button><span class="count"></span><button class="next">Sau →</button>
+  </div>
+  <div id="slides"></div>
+  <div class="nav" id="navBot">
+    <button class="prev">← Trước</button><span class="count"></span><button class="next">Sau →</button>
+  </div>
+
+  <div class="notes" id="notes">
+    <h3 style="margin:0 0 6px;font-size:1em;color:var(--ink)">Ghi chú khi thuyết trình</h3>
+    <ul>
+      <li>Số liệu và tên vụ việc lấy đúng từ tệp content/slides.ts. Khi trả lời câu hỏi, dẫn nguồn là cáo trạng, bản án hoặc thông báo của Bộ Công an như ghi ở chân từng trang vụ việc.</li>
+      <li>Nếu bị giới hạn thời gian, rút gọn trang 8, 9 và phần vụ việc ở trang 11 đến 13 xuống một câu mỗi trang. Khi đó thời lượng còn khoảng 8 đến 9 phút.</li>
+    </ul>
+  </div>
+</main>
+
+<script>
+/* Dữ liệu kịch bản. {b} là một lần bấm chuột. */
+const SLIDES = [
+ {n:1, t:"Bìa", sec:20, who:"a", p:[
+  "Kính chào thầy cô và các bạn. Nhóm chúng em thuộc Tiểu đội 2. Chuyên đề hôm nay là tập hợp lực lượng, thành lập tổ chức phản động trên không gian mạng. {b}"]},
+ {n:2, t:"Thành viên", sec:15, who:"a", p:[
+  "Đây là 10 thành viên của nhóm. Chúng em xin phép trình bày chuyên đề theo sáu nội dung như trên mục lục. {b}"]},
+ {n:3, t:"Mục lục", sec:10, who:"a", p:[
+  "Sáu nội dung gồm khái niệm, đặc điểm, các dạng hội nhóm, hình thức thành lập, thủ đoạn hoạt động và nhận xét chung."]},
+ {n:4, t:"Khái niệm", sec:50, who:"a", p:[
+  "Trước hết, chúng ta cần hiểu đúng đối tượng nghiên cứu. Đây là hoạt động của các đối tượng phản động lợi dụng internet, mạng xã hội và nền tảng số để tuyên truyền, móc nối, lôi kéo những người cùng quan điểm, người bất mãn hoặc nhận thức hạn chế. Mục đích là hình thành và phát triển tổ chức nhằm chống phá Đảng và Nhà nước. {b}",
+  "Điểm xuất phát là những cá nhân rời rạc trên mạng. Họ phát tán nội dung để thăm dò và tìm người hưởng ứng. {b}",
+  "Từ đó hình thành hai quá trình nối tiếp nhau. Quá trình thứ nhất là tập hợp lực lượng, gồm tìm kiếm, móc nối, lôi kéo, sàng lọc và tuyển chọn. {b} Quá trình thứ hai là thành lập tổ chức, gồm xác lập tên gọi, cương lĩnh, cơ cấu và kết nạp thành viên."]},
+ {n:5, t:"Đặc điểm", sec:60, who:"a", p:[
+  "Hoạt động này có ba đặc điểm. {b}",
+  "Thứ nhất là ẩn danh, xuyên biên giới và phi tập trung. Đối tượng dùng tài khoản ảo, máy chủ đặt ở nước ngoài, nên liên kết không bị giới hạn về địa lý và gắn chặt với các tổ chức phản động lưu vong. {b}",
+  "Thứ hai là công khai hóa, hợp pháp hóa và quốc tế hóa. Chúng núp dưới danh nghĩa xã hội dân sự, dân chủ, nhân quyền để che giấu bản chất, rồi gây sức ép đòi công nhận tổ chức đối lập. {b}",
+  "Thứ ba là lan truyền nhanh, mở rộng linh hoạt. Nhiều nhóm nhỏ có thể liên kết, sáp nhập thành một tổ chức có quy mô lớn hơn."]},
+ {n:6, t:"Ba dạng hội nhóm", sec:60, who:"a", p:[
+  "Căn cứ vào mối liên hệ với nhóm trên thực tế, hội nhóm phản động trên mạng có ba dạng. Mức độ gắn kết tăng dần từ dạng một đến dạng ba. {b}",
+  "Dạng một hoạt động hoàn toàn trên mạng, không liên hệ với nhóm nào ngoài thực tế. {b}",
+  "Dạng hai liên kết một phần. Nhóm trên mạng làm kênh truyền thông, khuếch trương thanh thế và phát triển lực lượng cho nhóm thực tế. {b}",
+  "Dạng ba liên kết hoàn toàn. Thành viên trùng nhau, hai nhóm hoạt động song song. Khi bị đấu tranh trên thực tế, nhóm chuyển lên hoạt động trên mạng."]},
+ {n:7, t:"Vụ việc 01 · Hội anh em dân chủ", sec:60, who:"a", p:[
+  "Vụ việc điển hình cho dạng ba là Hội anh em dân chủ, hoạt động từ 2013 đến 2017, do Nguyễn Văn Đài cầm đầu. {b} Nhóm này lập nhóm kín, sinh hoạt và họp qua internet, có cương lĩnh, điều lệ và cơ cấu chặt chẽ. {b} Chúng lập văn phòng đại diện, website và lợi dụng sự cố môi trường biển năm 2016 để kích động. Nguồn tài trợ lên tới 71.726 USD và 9.161 EUR. {b} Tại phiên tòa ngày 5/4/2018, Tòa án nhân dân Thành phố Hà Nội xác định sinh hoạt qua mạng chỉ là phương thức, bản chất vẫn là một tổ chức."]},
+ {n:8, t:"Ba hình thức thành lập", sec:50, who:"a", p:[
+  "Về hình thức thành lập tổ chức, có ba hình thức. {b}",
+  "Một là thành lập tổ chức mới, với tên gọi, tôn chỉ, cương lĩnh lần đầu xuất hiện. {b}",
+  "Hai là phục hồi tổ chức cũ. Chúng liên kết lại phần tử đảng phái phản động cũ, hoặc lập tổ chức tên mới nhưng đường hướng cũ. {b}",
+  "Ba là làm biến chất nhóm hợp pháp. Chúng cài người, khống chế quản trị viên của hội đồng hương, nhóm từ thiện, nhóm môi trường, rồi chuyển hướng nội dung."]},
+ {n:9, t:"Vụ việc 02 · Triều Đại Việt", sec:45, who:"a", p:[
+  "Vụ việc minh họa là tổ chức khủng bố Triều Đại Việt, thành lập tháng 1/2018 tại Canada. {b} Tổ chức do cựu thành viên của tổ chức khủng bố Chính phủ quốc gia Việt Nam lâm thời lập ra. {b} Chúng vận hành nhiều website, gửi hàng chục nghìn USD về nước. {b} Ngày 20/6/2018, chúng chỉ đạo gây nổ tại trụ sở Công an phường 12, quận Tân Bình. Có 17 đối tượng bị bắt và truy tố. Bài học là phần tử của tổ chức đã bị đấu tranh vẫn là nguồn hình thành tổ chức mới."]},
+ {n:10, t:"Sơ đồ đơn tuyến", sec:60, who:"b", handoff:"Chuyển sang người thuyết trình 2", p:[
+  "Phần tiếp theo trình bày thủ đoạn hoạt động. Toàn bộ quy trình có thể tóm gọn trong một sơ đồ gồm ba giai đoạn. {b}",
+  "Giai đoạn một, đối tượng lập hội nhóm công khai, đông người để tuyên truyền và thăm dò dư luận. {b} Trong đám đông, chúng chấm chọn những phần tử bất mãn. {b}",
+  "Giai đoạn hai, người được chọn bị đưa vào nhóm kín, dùng ứng dụng mã hóa để thẩm tra và kết nạp. {b}",
+  "Giai đoạn ba, thành viên bị chia thành tổ 2 đến 3 người, các tổ không biết nhau. {b} Mỗi tổ chỉ liên lạc với người điều hành ở nước ngoài. Khi một tổ bị phát hiện, các tổ còn lại không bị lộ."]},
+ {n:11, t:"Giai đoạn 1 · Tập hợp lực lượng", sec:70, who:"b", p:[
+  "Ở giai đoạn một, đối tượng dùng bốn thủ đoạn chính. {b}",
+  "Thủ đoạn thứ nhất là lập hội nhóm trên mạng xã hội, gồm hội, nhóm, câu lạc bộ, diễn đàn, fanpage, kênh YouTube. Đây là phương thức phổ biến nhất. {b}",
+  "Thứ hai là tuyên truyền, khuếch trương thanh thế để tạo hiệu ứng đám đông và chấm chọn phần tử bất mãn. {b}",
+  "Thứ ba là lợi dụng điểm nóng như khiếu kiện đất đai, môi trường để tung tin giả và kích động. {b}",
+  "Thứ tư là nhắm vào giới trẻ và nhóm yếu thế, núp bóng diễn đàn kỹ năng sống, học bổng, việc làm. {b}",
+  "Vụ việc minh họa là Hội nhà báo độc lập Việt Nam, thành lập năm 2014 với 41 người. Kênh Việt Nam Thời Báo đã đăng tải 1.530 tin, bài. Ngày 5/1/2021, người cầm đầu bị tuyên 15 năm tù."]},
+ {n:12, t:"Giai đoạn 2 · Thành lập và điều hành", sec:70, who:"b", p:[
+  "Giai đoạn hai có năm thủ đoạn. {b}",
+  "Một, sàng lọc và kết nạp qua nhóm kín trên Telegram, Signal, WhatsApp. {b}",
+  "Hai, hội họp và giao nhiệm vụ qua mạng, chỉ đạo trực tiếp từ nước ngoài. {b}",
+  "Ba, tổ chức theo đơn tuyến để tránh bị phát hiện. {b}",
+  "Bốn, đe dọa và khống chế, dùng chính thông tin, hình ảnh của thành viên để không cho họ rút lui. {b}",
+  "Năm, kết hợp mạng với móc nối trực tiếp, cử người về nước để trao tiền, phương tiện và kết nạp. {b}",
+  "Vụ việc minh họa là tổ chức Chính phủ quốc gia Việt Nam lâm thời. Chúng lôi kéo 225 người qua Facebook, liên lạc bằng bí danh, bí số, cử hai người về nước từ tháng 2/2017. Ngày 14/5/2026, các bị cáo chủ chốt bị tuyên án tù chung thân."]},
+ {n:13, t:"Giai đoạn 3 · Duy trì và phát triển", sec:70, who:"b", p:[
+  "Giai đoạn ba có ba thủ đoạn. {b}",
+  "Một, cấu kết với bên ngoài để vận động tài trợ và tranh thủ hậu thuẫn. {b}",
+  "Hai, quốc tế hóa. Chúng dựng kịch bản bị đàn áp và gửi báo cáo xuyên tạc ra nước ngoài. {b}",
+  "Ba, lợi dụng công nghệ mới như AI, Deepfake, tài khoản ảo, và tiền mã hóa để chuyển tiền. {b}",
+  "Vụ việc minh họa là tổ chức Người Thượng vì công lý. Tổ chức lập năm 2019 ở nước ngoài. {b} Chúng kích động đồng bào dân tộc thiểu số qua mạng xã hội. {b} Ngày 11/6/2023, chúng tấn công hai trụ sở xã tại Cư Kuin, làm 9 người chết. {b} Tháng 1/2024, Y Quynh Bdap bị tuyên vắng mặt 10 năm tù. {b} Tháng 3/2024, tổ chức bị liệt kê là tổ chức khủng bố."]},
+ {n:14, t:"Nhận xét chung", sec:50, who:"b", p:[
+  "Từ các nội dung trên, nhóm rút ra ba nhận xét. {b}",
+  "Một, quy trình khép kín trên mạng. Từ tuyên truyền, kết nạp đến chỉ đạo, tài trợ đều thực hiện được trên mạng. {b}",
+  "Hai, kết hợp công khai với bí mật. Nhóm công khai để tuyên truyền, chấm chọn. Nhóm kín, đơn tuyến để kết nạp, điều hành. {b}",
+  "Ba, chuyển đổi linh hoạt giữa mạng và thực tế. {b}",
+  "Do đó, công tác đấu tranh cần theo dõi đồng thời cả hai môi trường và xác định sớm mối liên hệ giữa nhóm trên mạng với nhóm, tổ chức ngoài thực tế."]},
+ {n:15, t:"Tổng hợp và lời cảm ơn", sec:30, who:"b", p:[
+  "Để tổng kết, hoạt động này gồm hai quá trình, ba đặc điểm, ba dạng hội nhóm, ba hình thức thành lập, ba giai đoạn thủ đoạn và ba nhận xét. Xu hướng chung là từ đông đến ít, từ công khai đến bí mật, và chỉ đạo từ nước ngoài. {b}",
+  "Phần trình bày của nhóm đến đây là hết. Xin chân thành cảm ơn thầy cô và các bạn đã lắng nghe."]}
+];
+
+const $ = s => document.querySelector(s);
+const root = document.documentElement;
+const wrap = $("#slides");
+let cur = 0, fs = 18, showChips = true;
+const store = {
+  get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
+  set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} }
+};
+
+function esc(s){ return s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+function fmt(sec){ return String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0"); }
+
+SLIDES.forEach((s,i) => {
+  const a = document.createElement("article");
+  a.className = "slide"; a.dataset.who = s.who; a.id = "t"+s.n;
+  const name = s.who === "a" ? "Phú" : "Long";
+  a.innerHTML =
+    '<header><span class="num">TRANG '+String(s.n).padStart(2,"0")+'</span>'+
+    '<span class="ttl">'+esc(s.t)+'</span>'+
+    '<span class="meta">~'+s.sec+' giây</span>'+
+    '<span class="who '+s.who+'">'+name+'</span></header>'+
+    (s.handoff ? '<div class="handoff">↪ '+esc(s.handoff)+'</div>' : '')+
+    s.p.map(t => '<p>'+esc(t).replace(/\{b\}/g,'<span class="chip">bấm</span>')+'</p>').join("");
+  wrap.appendChild(a);
+});
+const slidesEls = [...document.querySelectorAll("article.slide")];
+
+function visibleList(){ return slidesEls.filter(e => !e.classList.contains("hidden")); }
+
+function applyFilter(){
+  const v = $("#who").value;
+  slidesEls.forEach(e => e.classList.toggle("hidden", v !== "all" && e.dataset.who !== v));
+  const list = visibleList();
+  cur = Math.min(cur, Math.max(list.length-1,0));
+  render();
+}
+function render(){
+  const list = visibleList();
+  slidesEls.forEach(e => e.classList.remove("cur"));
+  if(list[cur]) list[cur].classList.add("cur");
+  document.querySelectorAll(".nav .count").forEach(c => c.textContent = list.length ? (cur+1)+" / "+list.length : "");
+  document.querySelectorAll(".prev").forEach(b => b.disabled = cur <= 0);
+  document.querySelectorAll(".next").forEach(b => b.disabled = cur >= list.length-1);
+  if(document.body.classList.contains("focus")) window.scrollTo({top:0});
+}
+function setFs(n){
+  fs = Math.min(40, Math.max(14, n));
+  root.style.setProperty("--fs", fs+"px");
+  store.set("kb-fs", fs);
+}
+function setMode(on){
+  document.body.classList.toggle("focus", on);
+  $("#mode").setAttribute("aria-pressed", on);
+  $("#mode").textContent = on ? "Xem tất cả" : "Đọc từng trang";
+  $("#notes").classList.toggle("hidden", on);
+  if(on && fs < 24 && !store.get("kb-fs")) setFs(26);
+  render();
+}
+function step(d){
+  const list = visibleList();
+  cur = Math.min(list.length-1, Math.max(0, cur+d));
+  render();
+}
+
+$("#who").addEventListener("change", applyFilter);
+$("#mode").addEventListener("click", () => setMode(!document.body.classList.contains("focus")));
+$("#plus").addEventListener("click", () => setFs(fs+2));
+$("#minus").addEventListener("click", () => setFs(fs-2));
+$("#chips").addEventListener("click", () => {
+  showChips = !showChips;
+  $("#chips").setAttribute("aria-pressed", showChips);
+  document.querySelectorAll(".chip").forEach(c => c.style.display = showChips ? "" : "none");
+});
+$("#theme").addEventListener("click", () => {
+  const dark = getComputedStyle(root).getPropertyValue("--bg").trim() === "#14161a";
+  const next = dark ? "light" : "dark";
+  root.dataset.theme = next; store.set("kb-theme", next);
+});
+document.querySelectorAll(".prev").forEach(b => b.addEventListener("click", () => step(-1)));
+document.querySelectorAll(".next").forEach(b => b.addEventListener("click", () => step(1)));
+
+/* đồng hồ */
+let secs = 0, tick = null;
+function toggleClock(){
+  if(tick){ clearInterval(tick); tick = null; $("#go").textContent = "Tiếp tục"; }
+  else { tick = setInterval(() => { secs++; $("#clock").textContent = fmt(secs); }, 1000); $("#go").textContent = "Tạm dừng"; }
+}
+$("#go").addEventListener("click", toggleClock);
+$("#reset").addEventListener("click", () => {
+  clearInterval(tick); tick = null; secs = 0;
+  $("#clock").textContent = "00:00"; $("#go").textContent = "Bắt đầu";
+});
+
+document.addEventListener("keydown", e => {
+  if(e.target.tagName === "SELECT") return;
+  if(e.key === "f" || e.key === "F") setMode(!document.body.classList.contains("focus"));
+  else if(document.body.classList.contains("focus") && e.key === "ArrowRight") step(1);
+  else if(document.body.classList.contains("focus") && e.key === "ArrowLeft") step(-1);
+  else if(e.key === " " && document.body.classList.contains("focus")){ e.preventDefault(); toggleClock(); }
+});
+
+/* khôi phục tùy chọn đã lưu */
+const savedTheme = store.get("kb-theme"); if(savedTheme) root.dataset.theme = savedTheme;
+const savedFs = parseInt(store.get("kb-fs"),10); if(savedFs) setFs(savedFs);
+applyFilter();
+</script>
+</body>
+</html>
