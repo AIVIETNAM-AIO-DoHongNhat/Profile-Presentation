@@ -155,6 +155,8 @@ export default function Deck() {
           </div>
         )}
       </div>
+      {/* điện thoại cầm dọc: slide 16:9 bị thu rất nhỏ, nhắc xoay ngang */}
+      <div className="rotate-hint" aria-hidden><span>⟲</span> Xoay ngang điện thoại để xem rõ hơn</div>
     </div>
   );
 }

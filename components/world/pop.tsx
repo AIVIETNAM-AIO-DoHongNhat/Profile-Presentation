@@ -8,7 +8,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import * as THREE from "three";
 import type { Line2 } from "three-stdlib";
 import { useFontsReady } from "../three/kit";
-import { SNAP, clamp01, sdt, useLive } from "./fx";
+import { LITE, SNAP, clamp01, sdt, useLive } from "./fx";
 import { P } from "./art";
 
 export const PAGE_Y = -1.55;
@@ -23,7 +23,8 @@ const UP = new THREE.Vector3(0, 1, 0);
 /** Mức ưu tiên vẽ: "now" cho trạm đang / sắp xem, "bg" cho phần làm sẵn. */
 export const BakeCtx = createContext<"now" | "bg">("now");
 /** Độ phân giải texture (1 = đầy đủ). Trạm chỉ thấy từ xa dùng mức thấp. */
-export const ArtResCtx = createContext(1);
+export const ArtResCtx = createContext(LITE ? 0.6 : 1);
+const MAX_PX = LITE ? 900 : 1500, ANISO = LITE ? 2 : 8;
 type Entry = { tex: THREE.Texture | null; users: number; job: (() => THREE.Texture) | null; prio: 0 | 1; wake: Set<() => void> };
 const cache = new Map<string, Entry>();
 const queue: [string[], string[]] = [[], []];
@@ -32,6 +33,8 @@ function enqueue(e: Entry, key: string, prio: 0 | 1) { if (e.tex || !e.job) retu
 function release(key: string) {
   const e = cache.get(key); if (!e || --e.users > 0) return;
   e.tex?.dispose(); e.job = null; e.wake.clear(); cache.delete(key);
+  // trả bộ nhớ canvas sau một nhịp, khi chắc chắn không còn khung hình nào vẽ bằng texture cũ
+  const c = e.tex?.image as HTMLCanvasElement | undefined; if (c) setTimeout(() => { c.width = 0; c.height = 0; }, 2000);
 }
 /** Vẽ dần hàng đợi texture, trong giới hạn thời gian mỗi khung hình. Đặt một lần trong cảnh. */
 export function ArtBaker() {
@@ -49,10 +52,10 @@ export function ArtBaker() {
   return null;
 }
 function dieCut(draw: Draw, w: number, h: number, res = 1, plain = false) {
-  const k = Math.min(1, 1500 / (Math.max(w, h) * PX)) * res, W = Math.max(2, Math.round(w * PX * k)), H = Math.max(2, Math.round(h * PX * k)), pad = Math.max(2, Math.round(14 * k + 4 * res));
+  const k = Math.min(1, MAX_PX / (Math.max(w, h) * PX)) * res, W = Math.max(2, Math.round(w * PX * k)), H = Math.max(2, Math.round(h * PX * k)), pad = Math.max(2, Math.round(14 * k + 4 * res));
   const A = document.createElement("canvas"); A.width = W; A.height = H;
   const ga = A.getContext("2d")!; ga.save(); ga.scale(k, k); draw(ga, W / k, H / k); ga.restore();
-  if (plain) { const t = new THREE.CanvasTexture(A); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; } // mực in thẳng lên giấy, không viền
+  if (plain) { const t = new THREE.CanvasTexture(A); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANISO; return t; } // mực in thẳng lên giấy, không viền
 
   // bóng trắng của hình, để làm viền giấy cắt
   const S = document.createElement("canvas"); S.width = W; S.height = H; const gs = S.getContext("2d")!;
@@ -61,7 +64,8 @@ function dieCut(draw: Draw, w: number, h: number, res = 1, plain = false) {
   for (let i = 0; i < 20; i++) { const a = (i / 20) * Math.PI * 2; gf.drawImage(S, Math.cos(a) * pad, Math.sin(a) * pad); }
   gf.globalCompositeOperation = "source-atop"; gf.fillStyle = "rgba(120,100,70,.10)"; gf.fillRect(0, H * 0.92, W, H); // mép giấy hơi sẫm ở chân
   gf.globalCompositeOperation = "source-over"; gf.drawImage(A, 0, 0);
-  const t = new THREE.CanvasTexture(F); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+  A.width = A.height = S.width = S.height = 0; // trả bộ nhớ của canvas trung gian ngay (Safari iOS giới hạn tổng bộ nhớ canvas)
+  const t = new THREE.CanvasTexture(F); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANISO; return t;
 }
 /**
  * Texture của một hình minh họa, dùng chung theo `id`. Trả về `null` tới khi vẽ xong.

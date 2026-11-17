@@ -9,7 +9,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { SLIDES, stepsOf } from "@/content/slides";
 import { damp } from "../three/kit";
-import { C, INK, LiveCtx, SNAP, ShakeCtx, Swarm, hdr, rng, sdt, useCanvasTex } from "./fx";
+import { C, INK, LITE, LiveCtx, SNAP, ShakeCtx, Swarm, hdr, rng, sdt, useCanvasTex } from "./fx";
 import { CENTER, TOTAL, anchorOf, shotFor, stationPos } from "./layout";
 import { ArtBaker, BakeCtx } from "./pop";
 import { ClosingStation, CoverStation, TeamStation } from "./stations/Intro";
@@ -133,13 +133,14 @@ function sheetDraw(k: number) {
     g.fillStyle = "rgba(0,0,0,.12)"; [0.25, 0.5, 0.75].forEach(f => { g.beginPath(); g.arc(0.9 * u, H * f, 0.28 * u, 0, Math.PI * 2); g.fill(); }); // lỗ bấm
   };
 }
-function Sheet({ k }: { k: number }) {
-  const tex = useCanvasTex(2400, 1600, sheetDraw(k), [k]);
+// Cả 14 tờ dùng chung một texture giấy (mỗi tờ lệch góc một chút nên vẫn trông khác nhau).
+// Trước đây mỗi tờ một texture 2400×1600, cộng lại ~300 MB bộ nhớ đồ họa, làm điện thoại sập tab.
+function Sheet({ k, tex }: { k: number; tex: THREE.Texture }) {
   const p = stationPos(k), rot = (rng(k * 7)() - 0.5) * 0.03;
   return <mesh rotation={[-Math.PI / 2, 0, rot]} position={[p.x, SHEET_Y, p.z + 0.5]}><planeGeometry args={[SHEET_W, SHEET_D]} /><meshBasicMaterial map={tex} /></mesh>;
 }
 function Folder() {
-  const tex = useCanvasTex(1024, 1024, (g, W, H) => {
+  const tex = useCanvasTex(LITE ? 512 : 1024, LITE ? 512 : 1024, (g, W, H) => {
     const R = rng(5); g.fillStyle = "#d9c7a0"; g.fillRect(0, 0, W, H);
     for (let i = 0; i < 26000; i++) { g.fillStyle = `rgba(${R() < 0.5 ? "120,90,50" : "255,250,235"},${R() * 0.08})`; g.fillRect(R() * W, R() * H, 2, 2); }
   }, []);
@@ -157,7 +158,7 @@ function Lamp({ n }: { n: number }) {
     light.current.position.set(t.x - 6, 22, t.z + 9); recv.current.position.set(t.x, SHEET_Y + 0.01, t.z + 0.5);
   });
   return <>
-    <directionalLight ref={light} intensity={1} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-17} shadow-camera-right={17} shadow-camera-top={13} shadow-camera-bottom={-13} shadow-camera-near={2} shadow-camera-far={50} shadow-radius={6} shadow-bias={-0.0005} />
+    <directionalLight ref={light} intensity={1} castShadow shadow-mapSize={LITE ? [1024, 1024] : [2048, 2048]} shadow-camera-left={-17} shadow-camera-right={17} shadow-camera-top={13} shadow-camera-bottom={-13} shadow-camera-near={2} shadow-camera-far={50} shadow-radius={6} shadow-bias={-0.0005} />
     <mesh ref={recv} rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[SHEET_W, SHEET_D]} /><shadowMaterial transparent opacity={0.1} /></mesh>
   </>;
 }
@@ -211,7 +212,8 @@ function Scene({ n, step, veil }: WP & { veil: React.RefObject<HTMLDivElement | 
   const last = useRef(n), prev = useRef(n);
   if (last.current !== n) { prev.current = last.current; last.current = n; }
   const [ready, setReady] = useState(n);
-  const [hq, setHq] = useState(true);
+  const [hq, setHq] = useState(!LITE);
+  const sheetTex = useCanvasTex(LITE ? 1200 : 2400, LITE ? 800 : 1600, sheetDraw(1), []);
   const mounted = (k: number) => k === n || k === n + 1 || k === prev.current;
   const stepOf = (k: number) => (k === n ? step : k < n ? stepsOf(SLIDES[k - 1]) : -1);
   // trạm mới chỉ "sống" (bật thẻ) khi camera đã gần tới; trạm vừa rời giữ nguyên cho tới khi khuất
@@ -222,9 +224,9 @@ function Scene({ n, step, veil }: WP & { veil: React.RefObject<HTMLDivElement | 
     <color attach="background" args={[C.bg]} />
     {/* ánh sáng chỉ tác động lên đồ vật 3D (con dấu, ghim, kính lúp); thẻ giấy và nét mực không dùng ánh sáng */}
     <hemisphereLight args={["#fff6e6", "#b8a684", 1.3]} />
-    <PerformanceMonitor onDecline={() => setHq(false)} onIncline={() => setHq(true)} flipflops={3} onFallback={() => setHq(false)} />
+    {!LITE && <PerformanceMonitor onDecline={() => setHq(false)} onIncline={() => setHq(true)} flipflops={3} onFallback={() => setHq(false)} />}
     <Folder />
-    {Array.from({ length: TOTAL }, (_, i) => <Sheet key={i} k={i + 1} />)}
+    {Array.from({ length: TOTAL }, (_, i) => <Sheet key={i} k={i + 1} tex={sheetTex} />)}
     <Lamp n={n} />
     <Fibers n={n} />
     <ArtBaker />
@@ -236,16 +238,31 @@ function Scene({ n, step, veil }: WP & { veil: React.RefObject<HTMLDivElement | 
       </group>
     ))}
     <Rig n={n} step={step} onArrive={setReady} shake={shakeAmt} veil={veil} />
-    <Post enabled={!SNAP} hq={hq} />
+    {/* điện thoại: bỏ hẳn hậu kỳ (mỗi lớp hậu kỳ thêm vài bộ đệm cỡ cả màn hình) */}
+    {!LITE && <Post enabled={!SNAP} hq={hq} />}
   </ShakeCtx.Provider>;
+}
+
+/**
+ * Sân khấu 1920×1080 được thu nhỏ bằng CSS cho vừa màn hình, nên canvas chỉ cần số điểm ảnh bằng đúng phần hiện ra
+ * (1920 × tỉ lệ thu × mật độ điểm ảnh), không phải 1920×1080 × 1.5 như trước. Trên điện thoại giảm được 4–6 lần bộ nhớ.
+ */
+function fitDpr() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080) * (window.devicePixelRatio || 1);
+  return Math.min(LITE ? 1.25 : 1.5, Math.max(0.6, s));
 }
 
 export default function World({ n, step }: WP) {
   // màn giấy dùng cho chuyển cảnh giữa các trang (độ mờ do camera điều khiển từng khung hình)
   const veil = useRef<HTMLDivElement>(null);
+  const [dpr, setDpr] = useState(fitDpr);
+  useEffect(() => {
+    const on = () => setDpr(fitDpr());
+    window.addEventListener("resize", on); return () => window.removeEventListener("resize", on);
+  }, []);
   return <>
-    <Canvas flat shadows="soft" resize={{ scroll: false, offsetSize: true }} dpr={[1, 1.5]} camera={{ fov: 40, near: 0.1, far: 900, position: [0, 10, 10] }}
-      gl={{ antialias: true, powerPreference: "high-performance" }}>
+    <Canvas flat shadows="soft" resize={{ scroll: false, offsetSize: true }} dpr={dpr} camera={{ fov: 40, near: 0.1, far: 900, position: [0, 10, 10] }}
+      gl={{ antialias: true, powerPreference: LITE ? "default" : "high-performance" }}>
       <Scene n={n} step={step} veil={veil} />
     </Canvas>
     <div ref={veil} className="veil" aria-hidden />

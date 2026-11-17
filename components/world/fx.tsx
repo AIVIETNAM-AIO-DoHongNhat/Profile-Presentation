@@ -50,6 +50,16 @@ export const lerp = THREE.MathUtils.lerp;
 export const TAU = Math.PI * 2;
 /** Chế độ kiểm tra (?snap=1): mọi chuyển động nhảy thẳng tới trạng thái cuối, dùng khi chụp ảnh màn hình trên máy không có GPU. */
 export const SNAP = typeof window !== "undefined" && /[?&]snap=1/.test(window.location.search);
+/**
+ * Chế độ nhẹ cho điện thoại / máy yếu (ép bật bằng ?lite=1, ép tắt bằng ?lite=0): texture nhỏ hơn, tắt hậu kỳ, bóng đổ nhỏ.
+ * Điện thoại có giới hạn bộ nhớ đồ họa thấp; vượt giới hạn thì trình duyệt tự tải lại tab (nháy trắng, không hiện gì).
+ */
+export const LITE = typeof window !== "undefined" && (() => {
+  const q = window.location.search.match(/[?&]lite=([01])/);
+  if (q) return q[1] === "1";
+  const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
+  return window.matchMedia("(pointer: coarse)").matches || mem <= 4 || Math.min(screen.width, screen.height) < 700;
+})();
 /** Bước thời gian dùng cho các hàm làm mượt. */
 export const sdt = (dt: number) => (SNAP ? 5 : Math.min(dt, 0.1));
 
@@ -333,10 +343,11 @@ export function useCanvasTex(w: number, h: number, draw: (g: CanvasRenderingCont
   const f = useFontsReady();
   const t = useMemo(() => {
     const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d")!, w, h);
-    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; return tex;
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = LITE ? 2 : 8; return tex;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, f, w, h]);
-  useEffect(() => () => t.dispose(), [t]);
+  // giải phóng cả canvas (Safari iOS giữ bộ nhớ canvas tới khi bị thu dọn, dễ vượt giới hạn)
+  useEffect(() => () => { t.dispose(); const c = t.image as HTMLCanvasElement | undefined; if (c) { c.width = 0; c.height = 0; } }, [t]);
   return t;
 }
 

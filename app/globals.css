@@ -22,6 +22,13 @@ mark { background: linear-gradient(transparent 58%, rgba(176, 38, 31, .16) 58%) 
 .stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; overflow: hidden; background: var(--desk); }
 .world { position: absolute; inset: 0; }
 .no3d { position: absolute; inset: 0; background: var(--desk); }
+.rotate-hint { display: none; }
+@media (orientation: portrait) and (max-width: 820px) {
+  .rotate-hint { display: flex; align-items: center; gap: 8px; position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 10px 16px; border-radius: 999px; background: var(--ink); color: var(--desk); font-size: 14px; white-space: nowrap; pointer-events: none; animation: hintIn .5s .6s both; }
+  .rotate-hint span { font-size: 18px; display: inline-block; animation: hintTurn 2s ease-in-out infinite; }
+}
+@keyframes hintIn { from { opacity: 0; transform: translate(-50%, 10px); } }
+@keyframes hintTurn { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
 /* màn giấy chuyển cảnh giữa các trang (độ mờ do camera điều khiển) */
 .veil { position: absolute; inset: 0; background: var(--desk); opacity: 0; pointer-events: none; }
 .vignette { position: absolute; inset: 0; pointer-events: none;
