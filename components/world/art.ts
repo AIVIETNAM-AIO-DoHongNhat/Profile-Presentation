@@ -298,7 +298,26 @@ export type ChibiOpt = {
   top: string; topStyle?: "plain" | "collar" | "hoodie" | "jersey" | "stripe" | "check" | "print" | "cardigan"; accent?: string;
   bottom?: string; shorts?: boolean; glasses?: boolean;
   pose?: "down" | "wave" | "point" | "hold"; item?: "folder" | "magnifier" | "shield";
+  /** vương miện vàng đội lệch trên đầu */
+  crown?: boolean;
 };
+/** Vương miện vàng: 3 đỉnh cao có ngọc tròn, băng đáy gắn đá đỏ / xanh, đội hơi nghiêng. (cx, by): giữa mép dưới. */
+function crown(g: G, cx: number, by: number, w: number, h: number, lw: number) {
+  const hw = w / 2, gold = "#e6b53a", goldD = "#c9952a", goldL = "#f6dd8a";
+  g.save(); g.translate(cx, by); g.rotate(0.13);
+  g.beginPath(); g.moveTo(-hw, 0); g.lineTo(-hw * 1.08, -h * 0.92); g.lineTo(-hw * 0.48, -h * 0.42); g.lineTo(0, -h * 1.12);
+  g.lineTo(hw * 0.48, -h * 0.42); g.lineTo(hw * 1.08, -h * 0.92); g.lineTo(hw, 0); g.closePath(); shape(g, gold, lw);
+  // ánh kim trên mặt trái
+  g.beginPath(); g.moveTo(-hw * 0.82, -h * 0.3); g.lineTo(-hw * 0.9, -h * 0.72); g.lineWidth = lw * 0.9; g.strokeStyle = goldL; g.lineCap = "round"; g.stroke();
+  rr(g, -hw * 1.03, -h * 0.27, w * 1.03, h * 0.3, h * 0.07); shape(g, goldD, lw * 0.85);
+  for (const [x, y] of [[-hw * 1.08, -h * 0.92], [0, -h * 1.12], [hw * 1.08, -h * 0.92]] as [number, number][]) { circ(g, x, y, h * 0.12); shape(g, goldL, lw * 0.75); }
+  circ(g, 0, -h * 0.12, h * 0.1); shape(g, "#c7332b", lw * 0.7);
+  for (const k of [-1, 1]) { circ(g, k * hw * 0.58, -h * 0.12, h * 0.07); shape(g, "#3d6fb0", lw * 0.6); }
+  // tia lấp lánh
+  g.translate(hw * 1.45, -h * 1.15); g.strokeStyle = gold; g.lineWidth = lw * 0.9;
+  g.beginPath(); g.moveTo(0, -h * 0.2); g.lineTo(0, h * 0.2); g.moveTo(-h * 0.2, 0); g.lineTo(h * 0.2, 0); g.stroke();
+  g.restore();
+}
 const pt = (cx: number, cy: number, r: number, xs: [number, number][]) => xs.map(([x, y]) => [cx + x * r, cy + y * r] as [number, number]);
 export function chibi(g: G, cx: number, by: number, s: number, o: ChibiOpt) {
   const lw = Math.max(3, s * 0.013), hr = s * 0.215, hy = by - s * 0.7, hairC = o.hairC ?? "#2a2622", bot = o.bottom ?? "#2f3238";
@@ -381,4 +400,5 @@ export function chibi(g: G, cx: number, by: number, s: number, o: ChibiOpt) {
     for (const k of [-1, 1]) { g.beginPath(); g.moveTo(cx + k * hr * 1.08, hy - hr * 0.1); g.quadraticCurveTo(cx + k * hr * 1.12, hy + hr * 0.6, cx + k * hr * 0.98, hy + hr * 1.0); g.lineTo(cx + k * hr * 0.8, hy + hr * 0.82); g.quadraticCurveTo(cx + k * hr * 0.9, hy + hr * 0.2, cx + k * hr * 0.86, hy - hr * 0.1); g.closePath(); shape(g, hairC, lw); }
   } else cap(dome(1.08, 1.22), [[0.94, -0.12], [0.7, -0.34], [0.48, -0.2], [0.24, -0.38], [0.0, -0.22], [-0.24, -0.4], [-0.48, -0.22], [-0.7, -0.38], [-0.92, -0.12]]);
   if (o.glasses) { for (const k of [-1, 1]) { circ(g, cx + k * hr * 0.36, hy + hr * 0.2, hr * 0.22); shape(g, null, lw * 0.7); } line(g, [[cx - hr * 0.14, hy + hr * 0.18], [cx + hr * 0.14, hy + hr * 0.18]], lw * 0.7); }
+  if (o.crown) crown(g, cx + hr * 0.12, hy - hr * 0.95, hr * 1.15, hr * 0.52, lw);
 }

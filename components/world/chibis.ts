@@ -10,6 +10,6 @@ export const CHIBI: ChibiOpt[] = [
   { hair: "spiky", top: "#2e6fc4", topStyle: "jersey", accent: "#f4f4f0", bottom: "#2a2c30" },       // Nguyễn Cửu An Phú
   { hair: "short", top: "#e8e2d2", topStyle: "check", accent: "#7d838b", bottom: "#2a2c30" },        // Nguyễn Tiến Mạnh
   { hair: "short", top: "#f2f2ee", topStyle: "stripe", accent: "#2a3b66", bottom: "#2a2c30" },       // Nguyễn Sỹ Long
-  { hair: "long", hairC: "#2b211c", top: "#1f2125", topStyle: "cardigan", bottom: "#f1ede4" },       // Phạm Khánh Linh
+  { hair: "long", hairC: "#2b211c", top: "#1f2125", topStyle: "cardigan", bottom: "#f1ede4", crown: true },     // Phạm Khánh Linh
   { hair: "spiky", top: "#8f8a86", bottom: "#23262b", shorts: true },                                 // Nguyễn Minh Hiếu
 ];

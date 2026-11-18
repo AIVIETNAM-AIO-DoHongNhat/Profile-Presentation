@@ -1,9 +1,9 @@
 "use client";
 // Bảng chữ bên trái màn hình. Mỗi nhịp bấm sáng lên đúng dòng ứng với cảnh 3D đang diễn.
 import { AnimatePresence, LayoutGroup, animate, motion } from "motion/react";
-import { useEffect, useRef } from "react";
-import type { Beat, Slide } from "@/content/slides";
-import { DEFINITION, GROUP, MEMBERS, METHODS, ROLES, SECTIONS, SEC_COLOR, TOPIC } from "@/content/slides";
+import { useEffect, useRef, useState } from "react";
+import type { Beat, Slide, Video } from "@/content/slides";
+import { CONCEPT_VIDEO, DEFINITION, GROUP, MEMBERS, METHODS, ROLES, SECTIONS, SEC_COLOR, SUMMARY, TAKEAWAY, TEAM_ORDER, TOPIC } from "@/content/slides";
 
 type P = { slide: Slide; n: number; step: number; setStep: (s: number) => void; goTo: (n: number) => void };
 
@@ -52,6 +52,53 @@ function Beats({ beats, cur, setStep, extra }: { beats: Beat[]; cur: number; set
   );
 }
 
+/* ---------- video ---------- */
+/** Link video → link nhúng. Hỗ trợ Facebook (video, reel), YouTube; trả về null nếu không nhận ra. */
+function embedSrc(url: string) {
+  try {
+    const u = new URL(url, "https://x.invalid"), host = u.hostname.replace(/^(www|m|web)\./, "");
+    if (host === "facebook.com" || host === "fb.watch") {
+      // link nhúng copy từ Facebook (plugins/video.php?href=…) thì lấy lại link gốc
+      const href = u.pathname.startsWith("/plugins/") ? u.searchParams.get("href") ?? url : url;
+      return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(href)}&show_text=false&autoplay=true&mute=0`;
+    }
+    let id = "";
+    if (host === "youtu.be") id = u.pathname.slice(1);
+    else if (host.endsWith("youtube.com")) id = u.searchParams.get("v") ?? u.pathname.match(/\/(?:embed|shorts|live)\/([\w-]+)/)?.[1] ?? "";
+    if (/^[\w-]{6,}$/.test(id)) return `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
+    return null;
+  } catch { return null; }
+}
+/**
+ * Màn hình chiếu đặt cạnh bảng chữ: tự hiện và phát khi tới đúng nhịp, rời nhịp thì tắt (không cần bấm).
+ * "Phóng to" chỉ đổi kích thước bằng CSS, khung video không bị tải lại nên không mất đoạn đang xem.
+ */
+function VideoScreen({ v }: { v: Video }) {
+  const [big, setBig] = useState(false);
+  const src = embedSrc(v.url), file = /\.(mp4|webm|mov)(\?|$)/i.test(v.url);
+  useEffect(() => { // Esc để thu nhỏ lại (không chuyển trang)
+    if (!big) return;
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); setBig(false); } };
+    window.addEventListener("keydown", h, true); return () => window.removeEventListener("keydown", h, true);
+  }, [big]);
+  return (
+    <motion.aside className={`screen ${big ? "big" : ""}`} data-noadvance style={{ "--vr": v.ratio ?? "16 / 9" } as React.CSSProperties}
+      initial={{ opacity: 0, x: 70, rotate: 1.5 }} animate={{ opacity: 1, x: 0, rotate: 0 }} exit={{ opacity: 0, x: 50, transition: { duration: 0.3 } }}
+      transition={{ duration: 0.65, ease: EASE, delay: 0.35 }}>
+      <header className="screen-bar mono">
+        <i className="rec" aria-hidden />ĐANG CHIẾU<span>· {v.by}</span>
+        <button onClick={() => setBig(b => !b)}>{big ? "⤡ THU NHỎ" : "⤢ PHÓNG TO"}</button>
+      </header>
+      <div className="screen-frame">
+        {file ? <video src={v.url} controls autoPlay playsInline />
+          : src ? <iframe src={src} title={v.title} allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
+          : <a className="vlink" href={v.url} target="_blank" rel="noreferrer">Mở video trong tab mới ↗</a>}
+      </div>
+      <p className="screen-cap">{v.title} <a href={v.url} target="_blank" rel="noreferrer">Mở nguồn ↗</a></p>
+    </motion.aside>
+  );
+}
+
 /** Con số trong kết luận vụ việc đếm lên (ví dụ "1.530 tin, bài", "196 năm tù"). */
 function CountUp({ text }: { text: string }) {
   const m = text.match(/^([\d.]+)(.*)$/), ref = useRef<HTMLSpanElement>(null);
@@ -82,11 +129,23 @@ export default function Overlay(p: P) {
   switch (s.kind) {
     case "cover":
       return (
-        <div className="cover">
-          <div className="kick mono">CHUYÊN ĐỀ · {GROUP.toUpperCase()}</div>
-          <h1>Tập hợp lực lượng, thành lập tổ chức phản động <em>trên không gian mạng</em></h1>
-          <p className="cover-names">{MEMBERS.map(m => m.name).join(" · ")}</p>
-          <div className="hint mono"><span className="blink">Nhấn chuột hoặc → để bắt đầu</span><span><kbd>F</kbd> toàn màn hình · <kbd>O</kbd> tổng quan</span></div>
+        <div className="cover cover-front">
+          <div className="cf-kick"><span>Chuyên đề</span><i aria-hidden /></div>
+          <h1 className="cf-title" aria-label={TOPIC}>
+            <span>Tập hợp lực lượng,</span>
+            <span>thành lập tổ chức phản động</span>
+            <em>trên không gian mạng</em>
+          </h1>
+          <div className="cf-rule" aria-hidden><b /><i /></div>
+          <div className="cf-team">
+            <div className="cf-team-h">Nhóm thực hiện <span>·</span> {GROUP}</div>
+            <ol style={{ "--rows": Math.ceil(MEMBERS.length / 2) } as React.CSSProperties}>
+              {TEAM_ORDER.map(k => (
+                <li key={k}>{MEMBERS[k].name}{MEMBERS[k].role === 0 && <em>{ROLES[0].label}</em>}</li>
+              ))}
+            </ol>
+          </div>
+          <div className="cf-hint mono">Nhấn chuột hoặc <kbd>→</kbd> để bắt đầu<span>·</span><kbd>F</kbd> toàn màn hình<span>·</span><kbd>O</kbd> tổng quan</div>
         </div>
       );
     case "team":
@@ -110,11 +169,17 @@ export default function Overlay(p: P) {
           ))}
         </ol>
       </Panel>;
-    case "concept":
-      return <Panel sec="I" kicker="KHÁI NIỆM" title="Khái niệm">
-        <p className="quote"><Rich t={DEFINITION} /></p>
-        <Beats beats={s.beats} cur={step} setStep={p.setStep} />
-      </Panel>;
+    case "concept": {
+      // tới đúng nhịp nói về nội dung video thì màn hình chiếu tự trượt vào bên cạnh và phát
+      const vid = CONCEPT_VIDEO.beat === undefined || step === CONCEPT_VIDEO.beat;
+      return <>
+        <Panel sec="I" kicker="KHÁI NIỆM" title="Khái niệm">
+          <p className="quote"><Rich t={DEFINITION} /></p>
+          <Beats beats={s.beats} cur={step} setStep={p.setStep} />
+        </Panel>
+        <AnimatePresence>{vid && <VideoScreen key="screen" v={CONCEPT_VIDEO} />}</AnimatePresence>
+      </>;
+    }
     case "features":
       return <Panel sec="II" kicker="ĐẶC ĐIỂM" title="Ba đặc điểm nổi bật"><Beats beats={s.beats} cur={step} setStep={p.setStep} /></Panel>;
     case "types":
@@ -146,6 +211,32 @@ export default function Overlay(p: P) {
           <ul className="items">{s.groups[i].items.map(x => <li key={x}>{x}</li>)}</ul>
         )} />
       </Panel>;
+    case "summary":
+      // bảng tổng kết: 6 ô ứng với 6 mục, hiện lần lượt; dòng thông điệp chốt ở dưới
+      return (
+        <section className="summary">
+          <header className="sum-head">
+            <div className="kick mono">TỔNG KẾT</div>
+            <h1>Tóm tắt nội dung chuyên đề</h1>
+            <p>{TOPIC}</p>
+          </header>
+          <div className="sum-grid">
+            {SUMMARY.map((c, i) => (
+              <article key={c.n} className="sum-cell" style={{ "--sc": SEC_COLOR[c.n], animationDelay: `${0.25 + i * 0.12}s` } as React.CSSProperties}>
+                <div className="sum-top"><b>{c.n}</b><h3>{c.label}</h3></div>
+                {c.lead && <p className="sum-lead">{c.lead}</p>}
+                {c.n === "V"
+                  ? <ol className="sum-chips">{c.items.map((t, k) => <li key={t}><i className="mono">{k + 1}</i>{t}</li>)}</ol>
+                  : <ul>{c.items.map(t => <li key={t}>{t}</li>)}</ul>}
+              </article>
+            ))}
+          </div>
+          <footer className="sum-take">
+            <span className="mono">THÔNG ĐIỆP</span>
+            {TAKEAWAY.map((t, k) => <b key={t}>{k > 0 && <i aria-hidden>·</i>}{t}</b>)}
+          </footer>
+        </section>
+      );
     case "closing":
       return (
         <div className="cover thanks">

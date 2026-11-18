@@ -31,7 +31,8 @@ function M1({ step }: MP) {
   return <group>
     <Card id="m1-phone" w={2.7} h={4.6} at={[0, -2.0]} ring={step === 0} dim={closed} draw={dPhone((g, x, y, w, h) => groupPage(g, x, y, w, h, { name: "Bảo vệ quyền lợi cộng đồng" }))}
       back={{ id: "m1-phone-bad", draw: dPhone((g, x, y, w, h) => groupPage(g, x, y, w, h, { name: "Bảo vệ quyền lợi cộng đồng", alert: true })) }} flipped={alert} />
-    <Typing at={[1.6, -2.0, 4.4]} on={step === 0} delay={0.9} />
+    {/* bong bóng "đang soạn tin" đứng hẳn bên phải điện thoại (mép phải ở x = 1.35), không che góc máy */}
+    <Typing at={[1.95, -2.0, 3.7]} on={step === 0} delay={0.9} />
     {TOPICS.map(([t, icon, at], i) => <Card key={t} id={`m1-t${i}`} w={1.9} h={2.0} at={at} on={step >= 1 && !closed} delay={i * 0.1} draw={dIcon(icon, t)} />)}
     {CROWD1.map(([x, z], i) => <Card key={i} id={`m1-c${i}`} w={crowdW(3, 1.45)} h={1.45} at={step >= 1 ? [x, z] : [x * 1.4, z + 2.3]} on={step >= 1 && !closed} delay={0.4 + i * 0.1} speed={1.4}
       draw={dCrowd(3, k => ({ body: [P.slate, P.sand, P.blueSoft][(i + k) % 3], phone: k === 1 }))} back={{ id: `m1-c${i}b`, draw: dCrowd(3, k => ({ body: k === 1 ? P.red : P.redSoft, angry: true })) }} flipped={alert} />)}

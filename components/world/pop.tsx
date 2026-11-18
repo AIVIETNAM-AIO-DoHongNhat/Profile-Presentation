@@ -249,27 +249,77 @@ function MotionTrail({ mv }: { mv: Move }) {
 const circlePts = (rx: number, rz: number, n: number) => Array.from({ length: n + 1 }, (_, i) => { const a = (i / n) * Math.PI * 2; return new THREE.Vector3(Math.cos(a) * rx, 0, Math.sin(a) * rz); });
 
 /* ---------------- bút khoanh tròn ---------------- */
-const PEN_N = 110;
+const PEN_N = 160;
+// Nét bút dạ: mép mềm, vệt khô chạy dọc nét (đầu bút hết mực), hạt mực li ti, đầu nét đậm hơn chỗ nhấc bút.
+const PEN_FS = `varying vec2 vUv; uniform float uProg; uniform vec3 uCol; uniform float uSeed;
+float h1(float x){ return fract(sin(x * 127.1 + uSeed) * 43758.5453); }
+float n1(float x){ float i = floor(x), f = fract(x); return mix(h1(i), h1(i + 1.), f * f * (3. - 2. * f)); }
+void main(){
+  if (vUv.x > uProg) discard;
+  float edge = smoothstep(0., .2, vUv.y) * smoothstep(1., .8, vUv.y);
+  float dry = .62 + .38 * n1(vUv.y * 11. + vUv.x * 2.3);                         // vệt khô dọc theo nét
+  float lift = 1. - .45 * smoothstep(.8, 1., vUv.x);                            // cuối nét nhấc bút, mực nhạt dần
+  float grain = .88 + .12 * n1(vUv.x * 260. + vUv.y * 5.);
+  float a = edge * mix(dry, 1., .35) * lift * grain;
+  if (a < .04) discard;
+  gl_FragColor = vec4(uCol, a * .95);
+  #include <colorspace_fragment>
+}`;
 type PenProps = { at: At; rx: number; rz: number; on?: boolean; delay?: number; color?: string; width?: number; rotY?: number; seed?: number };
-/** Vòng khoanh tay bằng bút (hơi lệch, vượt quá điểm đầu), vẽ dần trên trang. Điểm `at` là [x, z] hoặc [x, z, y]. */
-export function PenCircle({ at, rx, rz, on: onProp = true, delay = 0, color = P.red, width = 0.06, rotY = 0, seed = 1 }: PenProps) {
+/**
+ * Vòng khoanh tay bằng bút dạ, vẽ dần trên trang: hơi méo, vẽ quá điểm đầu một đoạn rồi hất nhẹ ra ngoài,
+ * nét to ở thân và thon ở hai đầu, chỗ hai nét chồng nhau mực đậm hơn. Điểm `at` là [x, z] hoặc [x, z, y].
+ */
+export function PenCircle({ at, rx, rz, on: onProp = true, delay = 0, color = P.red, width = 0.11, rotY = 0, seed = 1 }: PenProps) {
   const live = useLive(), on = onProp && live;
-  const pts = useMemo(() => Array.from({ length: PEN_N }, (_, i) => {
-    const t = i / (PEN_N - 1), a = -2.2 + seed * 0.37 + t * Math.PI * 2 * 1.13;
-    const wob = 1 + 0.045 * Math.sin(3 * a + seed) + 0.025 * Math.sin(7 * a + seed * 2), sp = 1.05 - 0.1 * t;
-    return new THREE.Vector3(Math.cos(a) * rx * wob * sp, 0, Math.sin(a) * rz * wob * sp);
-  }), [rx, rz, seed]);
-  const ref = useRef<Line2>(null!), st = useRef({ p: 0, wait: 0 });
+  const { geo, mat } = useMemo(() => {
+    // đường tâm của nét
+    const turn = 1.16, a0 = -2.35 + seed * 0.37;
+    const c: THREE.Vector2[] = [];
+    for (let i = 0; i < PEN_N; i++) {
+      const t = i / (PEN_N - 1), a = a0 + t * Math.PI * 2 * turn;
+      const wob = 1 + 0.035 * Math.sin(2 * a + seed) + 0.02 * Math.sin(5 * a + seed * 2.3);
+      const sp = 1.06 - 0.1 * t + 0.07 * Math.pow(Math.max(0, t - 0.9) / 0.1, 2); // xoắn vào dần, cuối nét hất ra
+      c.push(new THREE.Vector2(Math.cos(a) * rx * wob * sp, Math.sin(a) * rz * wob * sp));
+    }
+    // độ dài cộng dồn, để nét vẽ ra đều tay
+    const L = [0]; for (let i = 1; i < c.length; i++) L.push(L[i - 1] + c[i].distanceTo(c[i - 1]));
+    const total = L[L.length - 1];
+    const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+    for (let i = 0; i < c.length; i++) {
+      const p = c[i], q = c[Math.min(i + 1, c.length - 1)], o = c[Math.max(i - 1, 0)];
+      const tx = q.x - o.x, tz = q.y - o.y, tl = Math.hypot(tx, tz) || 1, nx = -tz / tl, nz = tx / tl;
+      const u = L[i] / total;
+      // lực tay: đặt bút nhẹ, thân nét đầy, cuối nét thon
+      const press = (0.45 + 0.55 * THREE.MathUtils.smoothstep(u, 0, 0.07)) * (0.3 + 0.7 * THREE.MathUtils.smoothstep(1 - u, 0, 0.14)) * (0.9 + 0.1 * Math.sin(u * 17 + seed));
+      const hw = (width / 2) * press;
+      pos.push(p.x + nx * hw, 0, p.y + nz * hw, p.x - nx * hw, 0, p.y - nz * hw);
+      uv.push(u, 0, u, 1);
+      if (i < c.length - 1) { const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    geo.setIndex(idx);
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { uProg: { value: 0 }, uCol: { value: new THREE.Color(color) }, uSeed: { value: seed * 13.7 } },
+      vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
+      fragmentShader: PEN_FS, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    });
+    return { geo, mat };
+  }, [rx, rz, seed, width, color]);
+  useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
+  const mesh = useRef<THREE.Mesh>(null!), st = useRef({ p: 0, wait: 0 });
   useFrame((_, rawDt) => {
     const dt = sdt(rawDt), s = st.current;
     s.wait = on ? s.wait + dt : 0;
-    s.p = on && s.wait >= delay ? Math.min(1, s.p + dt * 1.5) : Math.max(0, s.p - dt * 3);
-    const g = ref.current.geometry as THREE.InstancedBufferGeometry;
-    g.instanceCount = Math.floor(outCubic(s.p) * (PEN_N - 1));
-    ref.current.visible = s.p > 0.001;
+    // khoanh một nét nhanh, dứt khoát (chậm ở đầu, nhanh ở giữa, chậm lại khi nhấc bút)
+    s.p = on && s.wait >= delay ? Math.min(1, s.p + dt * 1.25) : Math.max(0, s.p - dt * 3);
+    mat.uniforms.uProg.value = s.p >= 1 ? 1.001 : inOut(s.p);
+    mesh.current.visible = s.p > 0.001;
   });
   return <group position={[at[0], PAGE_Y + 0.035 + (at[2] ?? 0), at[1]]} rotation={[0, rotY, 0]}>
-    <Line ref={ref} points={pts} color={color} lineWidth={width} worldUnits />
+    <mesh ref={mesh} geometry={geo} material={mat} renderOrder={2} frustumCulled={false} />
   </group>;
 }
 

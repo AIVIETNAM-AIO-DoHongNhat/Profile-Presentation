@@ -121,7 +121,8 @@ function splitName(g: CanvasRenderingContext2D, name: string, maxW: number) {
 function drawMember(i: number, order: number): Draw {
   return (g, W, H) => {
     const m = MEMBERS[i], role = ROLES[m.role];
-    chibi(g, W / 2, H * 0.76, H * 0.74, CHIBI[i]);
+    // người đội vương miện vẽ nhỏ đi một chút để vương miện không lẹm khỏi mép trên tấm bìa
+    chibi(g, W / 2, H * 0.76, H * (CHIBI[i].crown ? 0.69 : 0.74), CHIBI[i]);
     const py = H * 0.765, ph = H - py - 6;
     rr(g, W * 0.05, py, W * 0.9, ph, 10); shape(g, P.paper, 4);
     g.fillStyle = role.color; g.fillRect(W * 0.05 + 2, py + 2, W * 0.9 - 4, ph * 0.08);

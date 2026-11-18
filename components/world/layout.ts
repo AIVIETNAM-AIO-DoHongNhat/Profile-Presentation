@@ -1,4 +1,4 @@
-// Bảng đạo diễn: vị trí 14 trạm trong không gian mạng và góc máy cho từng (trang, bước).
+// Bảng đạo diễn: vị trí các trạm trong không gian mạng và góc máy cho từng (trang, bước).
 import * as THREE from "three";
 import { SLIDES } from "@/content/slides";
 import type { V3 } from "./fx";
@@ -6,7 +6,7 @@ import type { V3 } from "./fx";
 export const TOTAL = SLIDES.length;
 const SX = 34, SZ = 32;
 
-/** Tâm trạm của trang n (1..14). Lưới 5 cột, đi hình rắn lượn. */
+/** Tâm trạm của trang n (1..TOTAL). Lưới 5 cột, đi hình rắn lượn. */
 export function stationPos(n: number): THREE.Vector3 {
   const i = n - 1, row = Math.floor(i / 5); let col = i % 5; if (row % 2) col = 4 - col;
   return new THREE.Vector3(col * SX, 0, -row * SZ);
@@ -37,6 +37,7 @@ export function shotFor(n: number, step: number): Shot {
   switch (s.kind) {
     // bìa: nhìn chéo từ trên xuống, bao trọn mạng nhện và kim tự tháp tổ chức ở nửa phải
     case "cover": return { pos: [2.0, 8.2, 12.4], look: [2.3, -0.7, -0.2], shift: 0.22 };
+    case "summary": return { pos: [0, 7.6, 12.6], look: [0, -0.6, -0.6] };
     case "closing": return { pos: [0.8, 7.2, 12.6], look: [0.6, -0.3, -0.4], shift: 0.22 };
     case "team": return step === 0 ? { pos: [0, 3.0, 9.6], look: [0, 1.3, -1.6], shift: 0.2 } : { pos: [0, 7.6, 13.4], look: [0, -0.3, 0.8], shift: 0.145 };
     // mục lục: nhìn chéo từ trên xuống để thấy cả con đường và sáu cột mốc

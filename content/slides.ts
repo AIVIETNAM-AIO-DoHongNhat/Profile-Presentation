@@ -21,6 +21,7 @@ export type Slide =
   | { kind: "forms"; beats: Beat[] }
   | { kind: "method"; m: Method }
   | { kind: "solutions"; groups: Solution[] }
+  | { kind: "summary" }
   | { kind: "closing" };
 
 /* ---------- thông tin chung ---------- */
@@ -70,7 +71,22 @@ export const SECTIONS = [
 ];
 export const SEC_COLOR: Record<string, string> = { I: "#2c3a4a", II: "#4a4775", III: "#2f6652", IV: "#9c7419", V: "#b0261f", VI: "#2a4f7a" };
 
-export const DEFINITION = "Tập hợp lực lượng, thành lập tổ chức phản động trên KGM là “hoạt động của các đối tượng phản động lợi dụng Internet, MXH và các nền tảng truyền thông số để **tuyên truyền, móc nối, lôi kéo** những người có cùng quan điểm, tư tưởng chống đối chế độ, hoặc những người bất mãn, nhận thức lạc hậu, hạn chế nhằm **liên kết, hình thành và phát triển tổ chức phản động**. Mục đích cuối cùng của hoạt động này là nhằm **chống phá Đảng Cộng sản Việt Nam và Nhà nước Cộng hòa xã hội chủ nghĩa Việt Nam**”.";
+/**
+ * Video chiếu ở trang Khái niệm (nút "Xem video" hoặc phím V).
+ * `url`: link Facebook (video / reel), YouTube, hoặc file trong public/videos (ví dụ "/videos/khai-niem.mp4").
+ * `ratio`: tỉ lệ khung hình, "16 / 9" (mặc định), "1 / 1" (vuông), "9 / 16" (dọc).
+ * `beat`: nút xem video chỉ hiện khi đang ở nhịp này (đánh số từ 0).
+ */
+export type Video = { title: string; by: string; url: string; ratio?: string; beat?: number };
+export const CONCEPT_VIDEO: Video = {
+  title: "Người dân cần cảnh giác để không bị các đối tượng thù địch kích động, lôi kéo",
+  by: "ANTV · Lực lượng An ninh nội địa",
+  url: "https://www.facebook.com/reel/1305105798290600/",
+  ratio: "1 / 1",
+  beat: 1, // nhịp 02 "Tuyên truyền, móc nối, lôi kéo"
+};
+
+export const DEFINITION ="Tập hợp lực lượng, thành lập tổ chức phản động trên KGM là “hoạt động của các đối tượng phản động lợi dụng Internet, MXH và các nền tảng truyền thông số để **tuyên truyền, móc nối, lôi kéo** những người có cùng quan điểm, tư tưởng chống đối chế độ, hoặc những người bất mãn, nhận thức lạc hậu, hạn chế nhằm **liên kết, hình thành và phát triển tổ chức phản động**. Mục đích cuối cùng của hoạt động này là nhằm **chống phá Đảng Cộng sản Việt Nam và Nhà nước Cộng hòa xã hội chủ nghĩa Việt Nam**”.";
 
 /* ---------- 5 phương thức, thủ đoạn ---------- */
 export const METHODS: Method[] = [
@@ -151,6 +167,21 @@ export const METHODS: Method[] = [
   },
 ];
 
+/* ---------- trang tổng kết (trước lời cảm ơn) ---------- */
+/** Mỗi mục một ô: `lead` là câu tóm ý, `items` là các ý chính (ngắn, mỗi ý một dòng). */
+export type SummaryItem = { n: string; label: string; lead?: string; items: string[] };
+export const SUMMARY: SummaryItem[] = [
+  { n: "I", label: "Khái niệm", lead: "Lợi dụng Internet, MXH để tuyên truyền, móc nối, lôi kéo, hình thành tổ chức phản động.",
+    items: ["Nhắm vào người bất mãn, nhận thức hạn chế", "Mục đích: chống phá Đảng, Nhà nước"] },
+  { n: "II", label: "Đặc điểm", items: ["Ẩn danh, xuyên biên giới, phi tập trung", "Công khai hóa, hợp pháp hóa, quốc tế hóa", "Lan truyền nhanh, mở rộng linh hoạt"] },
+  { n: "III", label: "Các dạng hội nhóm", items: ["Hoạt động hoàn toàn trên mạng", "Liên kết một phần với nhóm thực tế", "Liên kết hoàn toàn với nhóm thực tế"] },
+  { n: "IV", label: "Hình thức thành lập", items: ["Thành lập tổ chức mới", "Phục hồi tổ chức cũ", "Thao túng, làm biến chất nhóm hợp pháp"] },
+  { n: "V", label: "Phương thức, thủ đoạn", items: METHODS.map(m => m.short) },
+  { n: "VI", label: "Giải pháp", items: ["Phát hiện sớm, xử lý nghiêm theo pháp luật", "Tuyên truyền, nâng cao nhận thức, cảnh giác", "Hoàn thiện cơ chế, phối hợp trong nước và quốc tế"] },
+];
+/** Thông điệp chốt ở cuối bảng tổng kết. */
+export const TAKEAWAY = ["Nhận diện sớm", "Không chia sẻ, không tham gia", "Kịp thời báo cơ quan chức năng"];
+
 export const SLIDES: Slide[] = [
   { kind: "cover" },
   { kind: "team" },
@@ -180,14 +211,15 @@ export const SLIDES: Slide[] = [
     { k: "04", t: "Hội họp qua ứng dụng", items: ["Nâng năng lực nghiệp vụ, kỹ thuật phát hiện", "Phối hợp doanh nghiệp, bảo toàn dữ liệu"] },
     { k: "05", t: "Móc nối bên ngoài", items: ["Phát hiện móc nối có yếu tố nước ngoài", "Tăng cường phối hợp quốc tế"] },
     { k: "★", t: "Giải pháp chung", items: ["Hoàn thiện cơ chế, quản lý nhà nước về an ninh mạng", "Nâng năng lực lực lượng chuyên trách, ứng dụng KHCN", "Phát huy gia đình, nhà trường, cơ quan, người dân", "Phòng ngừa gắn với xử lý nghiêm, đúng pháp luật"] }] },
+  { kind: "summary" },
   { kind: "closing" },
 ];
 
 /** Tên ngắn từng trang, dùng cho mục lục, bảng tên 3D và màn hình tổng quan (phím O) */
 export const TITLES = ["Bìa", "Thành viên", "Mục lục", "Khái niệm", "Đặc điểm", "Các dạng hội nhóm", "Hình thức thành lập",
-  ...METHODS.map(m => `Phương thức ${m.n} · ${m.short}`), "Giải pháp", "Lời cảm ơn"];
+  ...METHODS.map(m => `Phương thức ${m.n} · ${m.short}`), "Giải pháp", "Tổng kết", "Lời cảm ơn"];
 /** Mục của từng trang (đánh số từ 1) */
-export const SEC_OF: string[] = ["", "", "", "", "I", "II", "III", "IV", "V", "V", "V", "V", "V", "VI", ""];
+export const SEC_OF: string[] = ["", "", "", "", "I", "II", "III", "IV", "V", "V", "V", "V", "V", "VI", "", ""];
 
 /** Số bước (lần bấm) bên trong mỗi trang. Trả về chỉ số bước cuối, đánh số từ 0. */
 export function stepsOf(s: Slide): number {
