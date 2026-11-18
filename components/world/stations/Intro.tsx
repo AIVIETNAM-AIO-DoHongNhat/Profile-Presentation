@@ -3,7 +3,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { MEMBERS, ROLES, TEAM_ASPECT, TEAM_ORDER, TEAM_PHOTO, TEAM_STAGGER } from "@/content/slides";
+import { MEMBERS, ROLES, TEAM_ASPECT, TEAM_ORDER, TEAM_PHOTO, TEAM_SPOTS, TEAM_STAGGER } from "@/content/slides";
 import { MONO, P, SANS, building, chibi, groupPage, rr, shape, shield, star, text } from "../art";
 import { CHIBI } from "../chibis";
 import { Holo, sdt, useLive } from "../fx";
@@ -98,7 +98,8 @@ export function ClosingStation() {
 const PW = 6.6, PH = PW / TEAM_ASPECT, PAD = 0.3;
 const PHOTO_Z = -1.6, TILT = -0.08;
 export const TEAM_Y = PAGE_Y + (PH + PAD * 2) / 2 + 0.05;
-const faceAt = (i: number) => { const f = MEMBERS[i].face; return { x: (f[0] - 0.5) * PW, y: (0.5 - f[1]) * PH, r: f[2] * PW }; };
+// vị trí mặt trên ảnh (TEAM_SPOTS); `face` trong MEMBERS chỉ còn dùng để xếp hàng chibi
+const faceAt = (i: number) => { const f = TEAM_SPOTS?.[i] ?? MEMBERS[i].face; return { x: (f[0] - 0.5) * PW, y: (0.5 - f[1]) * PH, r: f[2] * PW }; };
 
 /* Bố cục thẻ: hàng sau là những người đứng cao trong ảnh, hàng trước là những người ngồi phía trước; trái → phải theo ảnh. */
 const CW = 1.45, CH = 2.3;
@@ -167,7 +168,7 @@ export function TeamStation({ step }: { step: number }) {
     <group position={[0, TEAM_Y, PHOTO_Z]}>
       <Holo src={TEAM_PHOTO} w={PW} h={PH} pad={PAD} on rotation={[TILT, 0, 0]} />
       <group rotation={[TILT, 0, 0]}>
-        <Spotlight on={on} />
+        {TEAM_SPOTS && <Spotlight on={on} />}
         <Tape x={-PW / 2 - PAD * 0.1} y={PH / 2 + PAD * 0.7} rot={0.62} />
         <Tape x={PW / 2 + PAD * 0.1} y={PH / 2 + PAD * 0.7} rot={-0.62} />
       </group>

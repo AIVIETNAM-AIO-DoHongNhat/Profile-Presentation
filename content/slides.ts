@@ -43,7 +43,15 @@ export type Member = {
   face: [number, number, number];
 };
 export const TEAM_PHOTO = "/images/team.jpg";
-export const TEAM_ASPECT = 2560 / 1721;
+export const TEAM_ASPECT = 2048 / 1365;
+/**
+ * Vị trí khuôn mặt từng người trên ảnh nhóm (x, y theo tỉ lệ 0..1 của ảnh, bán kính theo chiều ngang), cho vùng sáng
+ * lướt qua mặt khi chibi người đó hiện ra. Thứ tự theo MEMBERS. Để `null` thì tắt vùng sáng.
+ * 11 khuôn mặt đo sẵn trên ảnh hiện tại, từ trái sang phải:
+ *   [0.259,0.648] [0.306,0.660] [0.358,0.668] [0.415,0.671] [0.478,0.658] [0.530,0.671]
+ *   [0.588,0.660] [0.640,0.660] [0.703,0.649] [0.765,0.641] [0.828,0.641]   (bán kính ≈ 0.03)
+ */
+export const TEAM_SPOTS: [number, number, number][] | null = null;
 export const MEMBERS: Member[] = [
   { name: "Nguyễn Huy Hoàng", role: 3, face: [0.268, 0.160, 0.044] },
   { name: "Huỳnh Nguyễn Bảo Khương", role: 3, face: [0.375, 0.232, 0.040] },
